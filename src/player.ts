@@ -67,9 +67,14 @@ export class Player extends EventTarget {
     return v
   }
 
-  /** Begin loading the preview head. Idempotent. */
-  start() {
-    if (this.started || this.dead) return
+  /** Begin loading the preview head. A high-priority call promotes a queued speculative request. */
+  start(priority: 'high' | 'low' = 'high') {
+    const previewUrl = this.pk.r.src ?? this.pk.r.head
+    const rangeEnd = this.pk.r.src ? this.pk.r.headBytes - 1 : undefined
+    if (this.started || this.dead) {
+      if (this.started && priority === 'high' && previewUrl) cache.head(previewUrl, rangeEnd, 'high').catch(() => {})
+      return
+    }
     this.started = true
     if (!this.pk.mse || !MS) return this.progressive()
     const ms = (this.ms = new MS())
@@ -80,7 +85,8 @@ export class Player extends EventTarget {
       try {
         const sb = (this.sb = ms.addSourceBuffer(mimeOf(this.pk.r)))
         sb.addEventListener('updateend', () => this.pump())
-        cache.head(this.pk.r.head).then((b) => {
+        if (!previewUrl) throw new Error('preview rendition has no source')
+        cache.head(previewUrl, rangeEnd, priority).then((b) => {
           if (this.sb !== sb) return
           this.q.unshift(b)
           this.headIn = true
@@ -110,7 +116,9 @@ export class Player extends EventTarget {
     if (this.tail !== 1 || !this.sb) return
     this.tail = 2
     const sb = this.sb
-    cache.tail(this.pk.r.tail).then((b) => {
+    const url = this.pk.r.src ?? this.pk.r.tail
+    if (!url) return this.fallback('preview rendition has no tail')
+    cache.tail(url, this.pk.r.src ? this.pk.r.headBytes : undefined).then((b) => {
       if (this.dead || this.sb !== sb) return
       this.tail = 3
       this.q.push(b)

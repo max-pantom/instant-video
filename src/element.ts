@@ -171,11 +171,11 @@ export class InstantVideoElement extends Base implements Registered {
   }
   private unbindTarget() { this.boundTarget = undefined }
 
-  warm() {
+  warm(speculative = false) {
     if (!this._src || config.poolSize < 1) return
     const player = this.ensure()
     if (!player) return
-    player.start()
+    player.start(speculative ? 'low' : 'high')
     touch(this)
   }
 

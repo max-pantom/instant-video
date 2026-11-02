@@ -4,6 +4,16 @@ import type { Size } from './types'
 type Conn = { saveData?: boolean; effectiveType?: string; downlink?: number }
 const conn = (): Conn | undefined => (navigator as Navigator & { connection?: Conn }).connection
 
+/** Speculative request concurrency. Actual playback is never disabled. */
+export function prefetchLimit() {
+  const value = config.prefetch
+  if (value === false || value === 'none' || value === 0 || typeof matchMedia === 'undefined') return 0
+  const c = conn()
+  if (c?.saveData || (c?.effectiveType && /(^|-)2g$/.test(c.effectiveType))) return 0
+  if (matchMedia('(hover: none), (pointer: coarse)').matches) return 0
+  return typeof value === 'number' ? Math.max(0, Math.floor(value)) : 4
+}
+
 /** 'off' = posters only (reduced motion, Save-Data, 2g); 's' = small rendition on slow links. */
 export function quality(): Size | 'off' {
   if (typeof matchMedia === 'undefined') return 'off'

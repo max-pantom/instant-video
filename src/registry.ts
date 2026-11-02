@@ -1,14 +1,15 @@
 import { prefetchHead } from './cache'
 import { pick, probeCodecs } from './codec'
 import { config } from './config'
-import type { InstantSource } from './types'
+import { prefetchLimit } from './env'
+import type { InstantSource, Rendition } from './types'
 
 /** What the registry needs from an element. */
 export interface Registered {
   source: InstantSource | null
   /** The element whose rect/hover/focus/touch counts as intent (the card). */
   hitTarget: Element
-  warm(): void
+  warm(speculative?: boolean): void
 }
 
 const near = new Set<Registered>()
@@ -34,17 +35,23 @@ function preconnect(url: string) {
 
 /** Fetch the head for an item if prefetching is on and the item can use MSE. */
 export function prefetchFor(it: Registered) {
-  if (!config.prefetch || !it.source) return
+  if (prefetchLimit() < 1 || !it.source) return
   const pk = pick(it.source)
-  if (pk?.mse) prefetchHead(pk.r.head)
+  if (pk?.mse) {
+    const url = pk.r.src ?? pk.r.head
+    if (url) prefetchHead(url, pk.r.src ? pk.r.headBytes - 1 : undefined)
+  }
 }
+
+const renditionUrl = (r: Rendition) => r.src ?? r.head
 
 export function register(it: Registered) {
   byEl.set(it.hitTarget, it)
   if (it.source) {
     probeCodecs(it.source)
     const pk = pick(it.source)
-    if (pk) preconnect(pk.r.head)
+    const url = pk && renditionUrl(pk.r)
+    if (url) preconnect(url)
   }
   io ??= new IntersectionObserver(
     (es) => {
@@ -124,7 +131,7 @@ function project() {
       bestT = t0
     }
   }
-  best?.warm()
+  best?.warm(true)
 }
 
 function onMove(e: PointerEvent) {
@@ -143,7 +150,7 @@ function install() {
     'focusin',
     (e) => {
       const t = e.target as Element
-      if (t.matches?.(':focus-visible')) owner(t)?.warm()
+      if (t.matches?.(':focus-visible')) owner(t)?.warm(true)
     },
     { passive: true },
   )

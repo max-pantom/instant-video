@@ -11,6 +11,7 @@ describe.runIf(existsSync(cli))('cli', () => {
     expect(r.status).toBe(0)
     expect(r.stdout).toMatch(/instant-video encode <input\.\.\.>/)
     expect(r.stdout).toMatch(/--full <heights>/)
+    expect(r.stdout).toMatch(/--two-file/)
   })
 
   it('prints the version', () => {

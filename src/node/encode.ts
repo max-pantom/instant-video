@@ -25,6 +25,8 @@ export interface EncodeOptions {
    * (AV1), until it fits or the CRF boost cap is reached. 0 disables. Default 40.
    */
   headKb?: number
+  /** Emit legacy separate head/tail files instead of the default ranged single-file fMP4. */
+  twoFile?: boolean
   /** Optional high-quality player heights. Supported values: 720 and 1080. */
   full?: FullQuality[]
   fps?: number
@@ -39,7 +41,7 @@ export interface EncodeOptions {
 }
 
 export interface Artifact {
-  /** Storage key relative to the clip id, content-addressed: `m-avc-<hash>.head.mp4`. */
+  /** Storage key relative to the clip id; media file names are content-addressed. */
   name: string
   data: Buffer
   type: string
@@ -68,7 +70,7 @@ const RENDITIONS: Record<Size, { h: number; avc: number; av1: number }> = { m: {
 const MAX_BOOST: Record<Kind, number> = { avc: 14, av1: 12 }
 /** Rough CRF steps per halving of the bytes. */
 const STEPS_PER_HALVING: Record<Kind, number> = { avc: 6, av1: 8 }
-const VERSION = 2
+const VERSION = 3
 
 // ---- ISO-BMFF helpers -----------------------------------------------------------------------------------
 export function boxes(buf: Buffer) {
@@ -164,7 +166,7 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
       if ((await luma(ss)) < 14) ss = ss0 // dark by design: keep the original start
     }
 
-    type Entry = Rendition & { _head: Buffer; _tail: Buffer; _full?: Buffer; boost: number }
+    type Entry = Rendition & { _src: Buffer; _head: Buffer; _tail: Buffer; _full?: Buffer; boost: number }
     const r: Record<string, Record<string, Entry>> = {}
     const fragDur = gop / fps
     const nHeadWanted = Math.max(1, Math.ceil(headS / fragDur - 1e-6))
@@ -174,13 +176,17 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
       const f = join(work, `${rk}-${ck}.mp4`)
       await run(ffmpeg, ['-y', '-v', 'error', '-ss', String(ss), '-i', input, '-t', String(dur), '-vf', vf(R.h), ...codecs[ck](R[ck], boost, nHeadWanted * gop),
         '-movflags', 'cmaf+default_base_moof', '-an', f])
-      const { init, frags } = splitFragments(await readFile(f))
+      const data = await readFile(f)
+      const { init, frags } = splitFragments(data)
       const frames = Number((await run(ffprobe, ['-v', 'error', '-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', f])).toString().trim())
       // head = init + enough fragments to cover `head` seconds (at least one)
       const nHead = Math.min(frags.length, nHeadWanted)
-      const head = Buffer.concat([init, ...frags.slice(0, nHead)])
-      const tail = Buffer.concat(frags.slice(nHead))
-      return { file: f, boost, codec: codecString(init), headDur: round3(nHead * fragDur), dur: round3(frames / fps), headBytes: head.length, tailBytes: tail.length, head: '', tail: '', _head: head, _tail: tail }
+      const lastHead = frags[nHead - 1]
+      const headEnd = data.indexOf(lastHead) + lastHead.length
+      // Keep the split byte-contiguous so headBytes is also the exact HTTP Range boundary.
+      const head = data.subarray(0, headEnd)
+      const tail = data.subarray(headEnd)
+      return { file: f, boost, codec: codecString(init), headDur: round3(nHead * fragDur), dur: round3(frames / fps), headBytes: head.length, tailBytes: tail.length, _src: data, _head: head, _tail: tail }
     }
 
     let posterFrom = ''
@@ -277,14 +283,16 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
       sizes.poster[k] = buf.length
       posterNames[k] = add(`p-${hash(buf)}.${k}`, buf, `image/${k === 'jpg' ? 'jpeg' : k}`)
     }
-    const files: Record<string, Record<string, { head: string; tail: string; full?: string }>> = {}
+    const files: Record<string, Record<string, { src?: string; head?: string; tail?: string; full?: string }>> = {}
     for (const [rk, cs] of Object.entries(r)) {
       files[rk] = {}
       sizes.r[rk] = {}
       for (const [ck, e] of Object.entries(cs)) {
         files[rk][ck] = {
-          head: add(`${rk}-${ck}-${hash(e._head)}.head.mp4`, e._head, 'video/mp4'),
-          tail: add(`${rk}-${ck}-${hash(e._tail)}.tail.m4s`, e._tail, 'video/mp4'),
+          ...(opts.twoFile ? {
+            head: add(`${rk}-${ck}-${hash(e._head)}.head.mp4`, e._head, 'video/mp4'),
+            tail: add(`${rk}-${ck}-${hash(e._tail)}.tail.m4s`, e._tail, 'video/mp4'),
+          } : { src: add(`${rk}-${ck}-${hash(e._src)}.mp4`, e._src, 'video/mp4') }),
           ...(e._full ? { full: add(`${rk}-${ck}-${hash(e._full)}.full.mp4`, e._full, 'video/mp4') } : {}),
         }
         sizes.r[rk][ck] = { head: e.headBytes, tail: e.tailBytes, full: e.fullBytes ?? null, codec: e.codec, boost: e.boost }
@@ -325,7 +333,8 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
             const f = files[rk][ck]
             rr[ck as Kind] = {
               codec: e.codec, headDur: e.headDur, dur: e.dur, headBytes: e.headBytes, tailBytes: e.tailBytes,
-              head: url(f.head), tail: url(f.tail), ...(f.full ? { full: url(f.full), fullBytes: e.fullBytes } : {}),
+              ...(f.src ? { src: url(f.src) } : { head: url(f.head!), tail: url(f.tail!) }),
+              ...(f.full ? { full: url(f.full), fullBytes: e.fullBytes } : {}),
             }
           }
           out.r[rk as Size] = rr

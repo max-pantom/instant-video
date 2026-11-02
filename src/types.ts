@@ -2,11 +2,15 @@ export type Size = 'm' | 's'
 export type Kind = 'avc' | 'av1'
 export type FullQuality = 720 | 1080
 
-/** One encoded rendition: fMP4 init+head, the remaining fragments, and a progressive fallback (H.264 only). */
+/** One preview rendition. New manifests use `src` + byte ranges; legacy manifests use `head` + `tail`. */
 export interface Rendition {
   codec: string
-  head: string
-  tail: string
+  /** Single-file fMP4. Bytes `0..headBytes-1` contain init + the first fragments. */
+  src?: string
+  /** Legacy two-file init + first fragments. */
+  head?: string
+  /** Legacy two-file remaining fragments. */
+  tail?: string
   full?: string
   headDur: number
   dur: number
@@ -60,8 +64,8 @@ export interface InstantSource {
 export interface Config {
   /** Warm the card the pointer is heading to before it arrives. */
   predict: boolean
-  /** Fetch heads of cards near the viewport while idle. */
-  prefetch: boolean
+  /** Speculative head loading: viewport (default), a concurrency limit, or disabled. */
+  prefetch: 'viewport' | 'none' | number | boolean
   /** Warm players kept alive (elements with a MediaSource at frame 0). 0 disables warming. */
   poolSize: number
   /** How far ahead (ms) the pointer is projected. */

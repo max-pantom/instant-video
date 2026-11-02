@@ -43,7 +43,7 @@ export function pick(src: InstantSource): Pick | null {
     for (const kind of kinds) {
       const r = set[kind]
       if (!r) continue
-      if (canMse(mimeOf(r))) return { size, kind, r, mse: true }
+      if ((r.src || (r.head && r.tail)) && canMse(mimeOf(r))) return { size, kind, r, mse: true }
       if (r.full) return { size, kind, r, mse: false }
     }
   }

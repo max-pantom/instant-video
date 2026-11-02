@@ -32,6 +32,7 @@ Options
   --head <s>           length the first download (head) should cover                          [0.9]
   --head-kb <kb>       target maximum size of each head; 0 disables budgeting                 [40]
   --full <heights>     add player renditions: comma-separated 720,1080 (H.264 + AV1 fMP4)
+  --two-file           legacy mode: emit separate head/tail files instead of ranged single-file fMP4
   --no-skip-black      keep the start even if it is a black frame
   -h, --help           show this help
   -v, --version        show the version
@@ -122,6 +123,7 @@ async function main() {
         headKb: Number(opt('--head-kb', '40')),
         skipBlack: !flag('--no-skip-black'),
         full: opt('--full')?.split(',').filter(Boolean).map(Number) as Array<720 | 1080> | undefined,
+        twoFile: flag('--two-file'),
       })
       const manifest = join(out, `${id}.json`)
       await writeFile(manifest, JSON.stringify(iv, null, 2) + '\n')
