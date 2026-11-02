@@ -31,6 +31,7 @@ Options
   --duration <s>       clip length                                                            [7]
   --head <s>           length the first download (head) should cover                          [0.9]
   --head-kb <kb>       target maximum size of each head; 0 disables budgeting                 [40]
+  --full <heights>     add player renditions: comma-separated 720,1080 (H.264 + AV1 fMP4)
   --no-skip-black      keep the start even if it is a black frame
   -h, --help           show this help
   -v, --version        show the version
@@ -44,7 +45,7 @@ const opt = (n: string, d?: string) => {
   const i = args.indexOf(n)
   return i >= 0 ? args[i + 1] : d
 }
-const VALUE_FLAGS = new Set(['--out', '--id', '--storage', '--base-url', '--prefix', '--bucket', '--region', '--endpoint', '--public-url', '--start', '--duration', '--head', '--head-kb'])
+const VALUE_FLAGS = new Set(['--out', '--id', '--storage', '--base-url', '--prefix', '--bucket', '--region', '--endpoint', '--public-url', '--start', '--duration', '--head', '--head-kb', '--full'])
 const VIDEO_EXTS = new Set(['.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi'])
 
 async function videosIn(dir: string): Promise<string[]> {
@@ -120,6 +121,7 @@ async function main() {
         head: Number(opt('--head', '0.9')),
         headKb: Number(opt('--head-kb', '40')),
         skipBlack: !flag('--no-skip-black'),
+        full: opt('--full')?.split(',').filter(Boolean).map(Number) as Array<720 | 1080> | undefined,
       })
       const manifest = join(out, `${id}.json`)
       await writeFile(manifest, JSON.stringify(iv, null, 2) + '\n')

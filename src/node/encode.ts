@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import type { InstantSource, Kind, Rendition, Size } from '../types'
+import type { FullQuality, FullRendition, InstantSource, Kind, Rendition, Size, ThumbnailSprite } from '../types'
 import type { Storage } from './storage'
 
 const exec = promisify(execFile)
@@ -25,6 +25,8 @@ export interface EncodeOptions {
    * (AV1), until it fits or the CRF boost cap is reached. 0 disables. Default 40.
    */
   headKb?: number
+  /** Optional high-quality player heights. Supported values: 720 and 1080. */
+  full?: FullQuality[]
   fps?: number
   /** Keyframe interval in frames; every fragment starts on one. Default 12 (0.48 s at 25 fps). */
   gop?: number
@@ -51,7 +53,12 @@ export interface EncodedClip {
   startShifted: boolean
   artifacts: Artifact[]
   /** Byte sizes per file, for reports. */
-  sizes: { poster: Record<string, number>; r: Record<string, Record<string, { head: number; tail: number; full: number | null; codec: string; boost: number }>> }
+  sizes: {
+    poster: Record<string, number>
+    r: Record<string, Record<string, { head: number; tail: number; full: number | null; codec: string; boost: number }>>
+    full: Record<string, Record<string, { bytes: number; fallback: number | null; codec: string }>>
+    sprite: number | null
+  }
   /** Build the `InstantSource` once every artifact has a URL (`urls` maps artifact name → URL). */
   manifest(urls: Record<string, string>): InstantSource
 }
@@ -61,7 +68,7 @@ const RENDITIONS: Record<Size, { h: number; avc: number; av1: number }> = { m: {
 const MAX_BOOST: Record<Kind, number> = { avc: 14, av1: 12 }
 /** Rough CRF steps per halving of the bytes. */
 const STEPS_PER_HALVING: Record<Kind, number> = { avc: 6, av1: 8 }
-const VERSION = 1
+const VERSION = 2
 
 // ---- ISO-BMFF helpers -----------------------------------------------------------------------------------
 export function boxes(buf: Buffer) {
@@ -121,6 +128,8 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
   const gop = opts.gop ?? 12
   const headS = opts.head ?? 0.9
   const budget = Math.max(0, opts.headKb ?? 40) * 1024
+  const fullHeights = [...new Set(opts.full ?? [])].sort((a, b) => a - b)
+  if (fullHeights.some((h) => h !== 720 && h !== 1080)) throw new Error('full renditions must be 720 or 1080')
   const ffmpeg = opts.ffmpeg ?? process.env.FFMPEG ?? 'ffmpeg'
   const ffprobe = opts.ffprobe ?? process.env.FFPROBE ?? 'ffprobe'
   const cwebp = opts.cwebp ?? process.env.CWEBP ?? 'cwebp'
@@ -196,7 +205,35 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
       }
     }
 
-    // poster: frame 0 of the very file the player decodes first
+    type FullEntry = FullRendition & { _src: Buffer; _fallback?: Buffer }
+    const full: Partial<Record<FullQuality, Partial<Record<Kind, FullEntry>>>> = {}
+    for (const h of fullHeights) {
+      const set: Partial<Record<Kind, FullEntry>> = {}
+      for (const ck of ['avc', 'av1'] as const) {
+        const file = join(work, `full-${h}-${ck}.mp4`)
+        const crf = ck === 'avc' ? 22 : 32
+        const videoArgs = ck === 'avc'
+          ? ['-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', h > 720 ? '4.2' : '4.0', '-x264-params', `keyint=${gop}:min-keyint=${gop}:scenecut=0:open-gop=0`, ...TAGS]
+          : ['-c:v', 'libsvtav1', '-crf', String(crf), '-preset', '6', '-pix_fmt', 'yuv420p', '-svtav1-params', `keyint=${gop}:irefresh-type=2:scd=0`, '-g', String(gop), ...TAGS]
+        await run(ffmpeg, ['-y', '-v', 'error', '-ss', String(ss), '-i', input, '-t', String(dur), '-map', '0:v:0', '-map', '0:a:0?', '-vf', vf(h), ...videoArgs,
+          '-c:a', 'aac', '-b:a', '128k', '-movflags', 'cmaf+default_base_moof', file])
+        const data = await readFile(file)
+        const { init } = splitFragments(data)
+        const [width, height] = (await run(ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file])).toString().trim().split(',').map(Number)
+        const entry: FullEntry = { codec: codecString(init), src: '', w: width, h: height, dur, bytes: data.length, _src: data }
+        if (ck === 'avc') {
+          const fallback = join(work, `full-${h}-avc.progressive.mp4`)
+          await run(ffmpeg, ['-y', '-v', 'error', '-i', file, '-c', 'copy', '-movflags', '+faststart', fallback])
+          entry._fallback = await readFile(fallback)
+          entry.fallback = ''
+          entry.fallbackBytes = entry._fallback.length
+        }
+        set[ck] = entry
+      }
+      full[h] = set
+    }
+
+    // poster: frame 0 of the very file the preview player decodes first
     const png = join(work, 'p0.png')
     await run(ffmpeg, ['-y', '-v', 'error', '-i', posterFrom, '-frames:v', '1', png])
     const jpg = join(work, 'p0.jpg')
@@ -212,6 +249,20 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
     const [w, h] = (await run(ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', posterFrom])).toString().trim().split(',').map(Number)
     const poster = { jpg: await readFile(jpg), webp: await readFile(webp), avif: await readFile(avif) }
 
+    let sprite: (ThumbnailSprite & { _data: Buffer }) | undefined
+    if (fullHeights.length) {
+      const interval = Math.max(1, Math.ceil(dur / 12))
+      const count = Math.max(1, Math.ceil(dur / interval))
+      const columns = Math.min(6, count)
+      const rows = Math.ceil(count / columns)
+      const width = 160
+      const height = 90
+      const file = join(work, 'sprite.jpg')
+      const filter = `fps=1/${interval},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,tile=${columns}x${rows}`
+      await run(ffmpeg, ['-y', '-v', 'error', '-ss', String(ss), '-i', input, '-t', String(dur), '-vf', filter, '-frames:v', '1', '-q:v', '4', file])
+      sprite = { src: '', width, height, columns, rows, count, interval, _data: await readFile(file) }
+    }
+
     // content-addressed names → immutable
     const artifacts: Artifact[] = []
     const names = new Map<Buffer, string>()
@@ -220,7 +271,7 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
       names.set(data, name)
       return name
     }
-    const sizes: EncodedClip['sizes'] = { poster: {}, r: {} }
+    const sizes: EncodedClip['sizes'] = { poster: {}, r: {}, full: {}, sprite: sprite?._data.length ?? null }
     const posterNames: Record<string, string> = {}
     for (const [k, buf] of Object.entries(poster)) {
       sizes.poster[k] = buf.length
@@ -239,6 +290,20 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
         sizes.r[rk][ck] = { head: e.headBytes, tail: e.tailBytes, full: e.fullBytes ?? null, codec: e.codec, boost: e.boost }
       }
     }
+
+    const fullFiles: Record<string, Record<string, { src: string; fallback?: string }>> = {}
+    for (const [height, set] of Object.entries(full)) {
+      fullFiles[height] = {}
+      sizes.full[height] = {}
+      for (const [ck, e] of Object.entries(set)) {
+        fullFiles[height][ck] = {
+          src: add(`full-${height}-${ck}-${hash(e._src)}.mp4`, e._src, 'video/mp4'),
+          ...(e._fallback ? { fallback: add(`full-${height}-${ck}-${hash(e._fallback)}.progressive.mp4`, e._fallback, 'video/mp4') } : {}),
+        }
+        sizes.full[height][ck] = { bytes: e.bytes, fallback: e.fallbackBytes ?? null, codec: e.codec }
+      }
+    }
+    const spriteName = sprite ? add(`sprite-${hash(sprite._data)}.jpg`, sprite._data, 'image/jpeg') : undefined
 
     return {
       w,
@@ -264,6 +329,24 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
             }
           }
           out.r[rk as Size] = rr
+        }
+        if (fullHeights.length) {
+          out.full = { r: {} }
+          for (const [height, set] of Object.entries(full)) {
+            const rr: Partial<Record<Kind, FullRendition>> = {}
+            for (const [ck, e] of Object.entries(set)) {
+              const f = fullFiles[height][ck]
+              rr[ck as Kind] = {
+                codec: e.codec, src: url(f.src), ...(f.fallback ? { fallback: url(f.fallback) } : {}),
+                w: e.w, h: e.h, dur: e.dur, bytes: e.bytes, ...(e.fallbackBytes ? { fallbackBytes: e.fallbackBytes } : {}),
+              }
+            }
+            out.full.r[Number(height) as FullQuality] = rr
+          }
+          if (sprite && spriteName) out.full.sprite = {
+            src: url(spriteName), width: sprite.width, height: sprite.height, columns: sprite.columns,
+            rows: sprite.rows, count: sprite.count, interval: sprite.interval,
+          }
         }
         return out
       },

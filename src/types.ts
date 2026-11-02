@@ -1,5 +1,6 @@
 export type Size = 'm' | 's'
 export type Kind = 'avc' | 'av1'
+export type FullQuality = 720 | 1080
 
 /** One encoded rendition: fMP4 init+head, the remaining fragments, and a progressive fallback (H.264 only). */
 export interface Rendition {
@@ -14,6 +15,34 @@ export interface Rendition {
   fullBytes?: number
 }
 
+/** A high-quality player rendition. `src` is fMP4; H.264 also carries a progressive fallback. */
+export interface FullRendition {
+  codec: string
+  src: string
+  fallback?: string
+  w: number
+  h: number
+  dur: number
+  bytes: number
+  fallbackBytes?: number
+}
+
+/** Contact sheet used by the player's scrub tooltip. */
+export interface ThumbnailSprite {
+  src: string
+  width: number
+  height: number
+  columns: number
+  rows: number
+  count: number
+  interval: number
+}
+
+export interface FullSource {
+  r: Partial<Record<FullQuality, Partial<Record<Kind, FullRendition>>>>
+  sprite?: ThumbnailSprite
+}
+
 /** The manifest written by `instant-video encode` (stored on whatever record owns the clip). */
 export interface InstantSource {
   v: number
@@ -24,6 +53,8 @@ export interface InstantSource {
   h: number
   poster?: { avif?: string; webp?: string; jpg?: string }
   r: Partial<Record<Size, Partial<Record<Kind, Rendition>>>>
+  /** Optional high-quality player renditions produced with `instant-video encode --full …`. */
+  full?: FullSource
 }
 
 export interface Config {

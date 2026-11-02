@@ -19,9 +19,9 @@ describe.runIf(ok)('encode (needs ffmpeg)', () => {
       expect(g.status).toBe(0)
 
       const out = join(dir, 'out')
-      const { iv, clip } = await encodeToStorage(src, 'demo', fsStorage({ dir: out, baseUrl: '/m' }), { duration: 3 })
+      const { iv, clip } = await encodeToStorage(src, 'demo', fsStorage({ dir: out, baseUrl: '/m' }), { duration: 3, full: [720] })
 
-      expect(iv.v).toBe(1)
+      expect(iv.v).toBe(2)
       expect(iv.dur).toBe(3)
       expect([iv.w, iv.h]).toEqual([640, 360])
       for (const rk of ['m', 's'] as const) for (const ck of ['avc', 'av1'] as const) {
@@ -32,6 +32,11 @@ describe.runIf(ok)('encode (needs ffmpeg)', () => {
         expect(r.headDur).toBeGreaterThanOrEqual(0.9)
       }
       expect(iv.r.m!.avc!.full).toBeTruthy()
+      expect(iv.full!.r[720]!.avc!.src).toMatch(/full-720-avc-.*\.mp4$/)
+      expect(iv.full!.r[720]!.avc!.fallback).toMatch(/\.progressive\.mp4$/)
+      expect(iv.full!.r[720]!.av1!.codec).toMatch(/^av01\./)
+      expect(iv.full!.sprite).toMatchObject({ width: 160, height: 90, count: 3, interval: 1 })
+      expect(clip.sizes.full['720'].avc.bytes).toBeGreaterThan(0)
       expect(Object.keys(iv.poster!).sort()).toEqual(['avif', 'jpg', 'webp'])
 
       // the head starts with an init segment and is small; the poster exists on disk

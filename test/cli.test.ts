@@ -10,6 +10,7 @@ describe.runIf(existsSync(cli))('cli', () => {
     const r = run('--help')
     expect(r.status).toBe(0)
     expect(r.stdout).toMatch(/instant-video encode <input\.\.\.>/)
+    expect(r.stdout).toMatch(/--full <heights>/)
   })
 
   it('prints the version', () => {
