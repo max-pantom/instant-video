@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { encodeToStorage } from '../src/node/encode'
+import { encodePosterCatalog, encodeToStorage } from '../src/node/encode'
 import { fsStorage } from '../src/node/storage'
 
 // needs ffmpeg with libx264 and libsvtav1; skipped elsewhere
@@ -47,6 +47,14 @@ describe.runIf(ok)('encode (needs ffmpeg)', () => {
       expect(head.length).toBe(clip.sizes.r.m.avc.head)
       expect(file.length).toBe(clip.sizes.r.m.avc.head + clip.sizes.r.m.avc.tail)
       expect((await readFile(join(out, iv.poster!.jpg!.replace('/m/', '')))).length).toBeGreaterThan(500)
+
+      const jpg = clip.artifacts.find((artifact) => artifact.name.endsWith('.jpg'))!
+      const catalog = await encodePosterCatalog([{ id: 'one', data: jpg.data }, { id: 'two', data: jpg.data }])
+      expect(catalog.artifact.name).toMatch(/^poster-catalog-[a-f0-9]{12}\.jpg$/)
+      expect(catalog.manifest('/catalog.jpg')).toMatchObject({
+        src: '/catalog.jpg', width: 160, height: 90, columns: 2, rows: 1,
+        items: { one: { x: 0, y: 0 }, two: { x: 160, y: 0 } },
+      })
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

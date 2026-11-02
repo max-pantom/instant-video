@@ -47,6 +47,17 @@ export interface FullSource {
   sprite?: ThumbnailSprite
 }
 
+export interface PosterCatalogItem { x: number; y: number; width: number; height: number }
+export interface PosterCatalog {
+  v: 1
+  src: string
+  width: number
+  height: number
+  columns: number
+  rows: number
+  items: Record<string, PosterCatalogItem>
+}
+
 /** The manifest written by `instant-video encode` (stored on whatever record owns the clip). */
 export interface InstantSource {
   v: number

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
-import { encodeToStorage } from './node/encode'
+import { encodePosterCatalog, encodeToStorage } from './node/encode'
 import { blobStorage, fsStorage, s3Storage, type Storage } from './node/storage'
 
 const exec = promisify(execFile)
@@ -33,6 +34,7 @@ Options
   --head-kb <kb>       target maximum size of each head; 0 disables budgeting                 [40]
   --full <heights>     add player renditions: comma-separated 720,1080 (H.264 + AV1 fMP4)
   --two-file           legacy mode: emit separate head/tail files instead of ranged single-file fMP4
+  --poster-sprite      emit one catalog poster image plus posters.json map
   --no-skip-black      keep the start even if it is a black frame
   -h, --help           show this help
   -v, --version        show the version
@@ -99,6 +101,7 @@ async function main() {
   await mkdir(out, { recursive: true })
   const tmp = await mkdtemp(join(tmpdir(), 'instant-video-src-'))
   const encodedIds: string[] = []
+  const catalogPosters: Array<{ id: string; data: Buffer }> = []
   try {
     for (const input of inputs) {
       const id = opt('--id') ?? (/^https?:/.test(input) ? new URL(input).pathname.split('/').filter(Boolean).pop() ?? 'clip' : basename(input, extname(input))).replace(/[^\w.-]+/g, '-')
@@ -129,7 +132,21 @@ async function main() {
       await writeFile(manifest, JSON.stringify(iv, null, 2) + '\n')
       const m = clip.sizes.r.m
       console.log(`ok  ${id}  ${iv.w}x${iv.h}  head ${(m.avc.head / 1024).toFixed(1)} KB (h264) / ${(m.av1.head / 1024).toFixed(1)} KB (av1)  ->  ${manifest}`)
+      if (flag('--poster-sprite')) {
+        const poster = clip.artifacts.find((artifact) => artifact.name.endsWith('.jpg'))
+        if (poster) catalogPosters.push({ id, data: poster.data })
+      }
       encodedIds.push(id)
+    }
+    if (flag('--poster-sprite') && catalogPosters.length) {
+      const sprite = await encodePosterCatalog(catalogPosters)
+      const spriteUrl = await storage.put(`catalog/${sprite.artifact.name}`, sprite.artifact.data, sprite.artifact.type)
+      const catalog = sprite.manifest(spriteUrl)
+      const data = Buffer.from(JSON.stringify(catalog, null, 2) + '\n')
+      const digest = createHash('sha256').update(data).digest('hex').slice(0, 12)
+      const catalogUrl = await storage.put(`catalog/posters-${digest}.json`, data, 'application/json')
+      await writeFile(join(out, 'posters.json'), data)
+      console.log(`ok  poster catalog  ${catalogPosters.length} items  ->  ${catalogUrl}`)
     }
     if (kind === 'local') await writeFile(join(out, 'index.json'), JSON.stringify(encodedIds, null, 2) + '\n')
   } finally {

@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import type { FullQuality, FullRendition, InstantSource, Kind, Rendition, Size, ThumbnailSprite } from '../types'
+import type { FullQuality, FullRendition, InstantSource, Kind, PosterCatalog, Rendition, Size, ThumbnailSprite } from '../types'
 import type { Storage } from './storage'
 
 const exec = promisify(execFile)
@@ -371,5 +371,54 @@ export async function encodeToStorage(input: string, id: string, storage: Storag
   const urls: Record<string, string> = {}
   for (const a of clip.artifacts) urls[a.name] = await storage.put(`${id}/${a.name}`, a.data, a.type)
   return { clip, iv: clip.manifest(urls) }
+}
+
+export interface PosterCatalogOptions {
+  ffmpeg?: string
+  workDir?: string
+  width?: number
+  height?: number
+  columns?: number
+}
+
+/** Combine catalog poster JPEGs into one content-addressed contact sheet and a pixel-coordinate map. */
+export async function encodePosterCatalog(posters: Array<{ id: string; data: Buffer }>, opts: PosterCatalogOptions = {}) {
+  if (!posters.length) throw new Error('poster catalog needs at least one poster')
+  const ffmpeg = opts.ffmpeg ?? process.env.FFMPEG ?? 'ffmpeg'
+  const width = opts.width ?? 160
+  const height = opts.height ?? 90
+  const columns = opts.columns ?? Math.ceil(Math.sqrt(posters.length))
+  const rows = Math.ceil(posters.length / columns)
+  const work = opts.workDir ?? (await mkdtemp(join(tmpdir(), 'instant-video-posters-')))
+  await mkdir(work, { recursive: true })
+  try {
+    const inputs: string[] = []
+    const filters: string[] = []
+    const labels: string[] = []
+    for (let i = 0; i < posters.length; i++) {
+      const file = join(work, `${i}.jpg`)
+      await writeFile(file, posters[i].data)
+      inputs.push('-i', file)
+      filters.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2[p${i}]`)
+      labels.push(`[p${i}]`)
+    }
+    const layout = posters.map((_, i) => `${(i % columns) * width}_${Math.floor(i / columns) * height}`).join('|')
+    filters.push(`${labels.join('')}xstack=inputs=${posters.length}:layout=${layout}:fill=black[out]`)
+    const file = join(work, 'catalog.jpg')
+    await exec(ffmpeg, ['-y', '-v', 'error', ...inputs, '-filter_complex', filters.join(';'), '-map', '[out]', '-frames:v', '1', '-q:v', '4', file], { encoding: 'buffer', maxBuffer: 1 << 28 })
+    const data = await readFile(file)
+    const artifact: Artifact = { name: `poster-catalog-${hash(data)}.jpg`, data, type: 'image/jpeg' }
+    return {
+      artifact,
+      manifest(src: string): PosterCatalog {
+        return {
+          v: 1, src, width, height, columns, rows,
+          items: Object.fromEntries(posters.map((poster, i) => [poster.id, { x: (i % columns) * width, y: Math.floor(i / columns) * height, width, height }])),
+        }
+      },
+    }
+  } finally {
+    if (!opts.workDir) await rm(work, { recursive: true, force: true })
+  }
 }
 
