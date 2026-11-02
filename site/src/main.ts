@@ -121,6 +121,14 @@ interface CardOpts {
   onMeasure?: (ms: number) => void
 }
 const cards = new Set<{ stop: () => void }>()
+let expanded: { card: HTMLElement; iv: InstantVideoElement; close: () => void } | null = null
+const backdrop = document.createElement('button')
+backdrop.className = 'player-backdrop'
+backdrop.type = 'button'
+backdrop.ariaLabel = 'Close full player'
+backdrop.hidden = true
+document.body.append(backdrop)
+backdrop.addEventListener('click', () => expanded?.close())
 
 function makeCard({ id, i, tint, onMeasure }: CardOpts) {
   const src = clips[id]
@@ -140,7 +148,8 @@ function makeCard({ id, i, tint, onMeasure }: CardOpts) {
     </div>
     <span class="tag"><b>hover</b></span>
     <span class="aim-tag">warming</span>
-    <div class="cap"><span>${id}</span><span>head ${(src.r.m!.avc!.headBytes / 1024).toFixed(0)} KB</span></div>`
+    <div class="cap"><span>${id}</span><span>head ${(src.r.m!.avc!.headBytes / 1024).toFixed(0)} KB</span></div>
+    <button class="card-close" type="button" aria-label="Close full player">${icon('close')}</button>`
   const iv = card.querySelector('instant-video') as InstantVideoElement
   iv.source = src
   const tag = card.querySelector('.tag b') as HTMLElement
@@ -181,6 +190,47 @@ function makeCard({ id, i, tint, onMeasure }: CardOpts) {
   const api = { stop }
   cards.add(api)
 
+  const collapse = () => {
+    if (expanded?.card !== card) return
+    card.classList.remove('expanded')
+    card.removeAttribute('role')
+    card.setAttribute('role', 'button')
+    card.setAttribute('aria-label', `Preview clip ${id}`)
+    iv.mode = 'preview'
+    iv.controls = false
+    iv.download = false
+    iv.active = false
+    backdrop.hidden = true
+    document.documentElement.classList.remove('player-open')
+    expanded = null
+    card.focus({ preventScroll: true })
+  }
+  const expand = () => {
+    if (expanded?.card === card) return
+    expanded?.close()
+    cards.forEach((c) => c !== api && c.stop())
+    card.classList.add('expanded')
+    card.setAttribute('role', 'dialog')
+    card.setAttribute('aria-modal', 'true')
+    card.setAttribute('aria-label', `${id} full player`)
+    iv.controls = true
+    iv.muted = true
+    iv.loop = false
+    iv.download = true
+    iv.title = `${id} · preview to full player`
+    iv.mode = 'player'
+    backdrop.hidden = false
+    document.documentElement.classList.add('player-open')
+    expanded = { card, iv, close: collapse }
+    iv.focus({ preventScroll: true })
+  }
+  card.querySelector('.card-close')!.addEventListener('click', (event) => { event.stopPropagation(); collapse() })
+  iv.addEventListener('iv-close', collapse)
+  card.addEventListener('click', (event) => {
+    if (iv.mode === 'player' || (event.target as HTMLElement).closest('.card-close')) return
+    expand()
+  })
+
   card.addEventListener('pointerenter', (e) => {
     if (e.pointerType !== 'touch') start()
   })
@@ -205,6 +255,10 @@ function makeCard({ id, i, tint, onMeasure }: CardOpts) {
   return { card, iv, start, stop }
 }
 
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && expanded) expanded.close()
+})
+
 // ---- 1 · hero grid ------------------------------------------------------------------------------------------
 {
   const grid = $('#hero-grid')
@@ -212,7 +266,7 @@ function makeCard({ id, i, tint, onMeasure }: CardOpts) {
   const all: number[] = []
   const tints = [0, 0, 0, 0, 40, 80, 120, 160, 200, 240, 280, 320]
   for (let n = 0; n < 12; n++) {
-    const id = ids[n % ids.length]
+    const id = n === 0 && clips.gradients ? 'gradients' : ids[n % ids.length]
     const { card } = makeCard({
       id,
       i: n,

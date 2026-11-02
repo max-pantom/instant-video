@@ -4,7 +4,7 @@ import {
   configure,
   pick,
   quality
-} from "./chunk-OZE6J4DY.js";
+} from "./chunk-G27ZA2EV.js";
 export {
   InstantVideoElement,
   config,

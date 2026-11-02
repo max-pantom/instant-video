@@ -15,10 +15,11 @@ const tabs: { id: string; label: string; code: string; lang: 'js' | 'sh' }[] = [
   el.source = await (await fetch('/media/my-clip.json')).json()   // the manifest written by the encoder
   el.addEventListener('playing', () => console.log('playing'))
   card.onpointerenter = () => (el.warmed = el.active = true)       // play; \`warmed\` alone gets ready without playing
-  card.onpointerleave = () => (el.active = false)                  // pause, rewind, fade back to the poster
-
-  // Optional thumbnail-style scrubbing instead of looping playback:
-  el.mode = 'scrub'                         // horizontal pointer position → clip time
+  card.onpointerleave = () => el.mode === 'preview' && (el.active = false)
+  card.onclick = () => {                    // same element, same timeline
+    el.controls = true
+    el.mode = 'player'
+  }
 </script>`,
   },
   {
@@ -27,7 +28,11 @@ const tabs: { id: string; label: string; code: string; lang: 'js' | 'sh' }[] = [
 
 <div className="card" data-iv-target style={{ position: 'relative' }}>
   <img src={clip.poster.jpg} alt="" />
-  <InstantVideo source={clip} active={hovering} warm={intent} mode="scrub" />
+  <InstantVideo
+    source={clip} active={hovering} warm={intent}
+    mode={expanded ? 'player' : 'preview'} controls muted
+    onModeChange={setMode}
+  />
 </div>`,
   },
   {
@@ -47,6 +52,7 @@ configure({
     id: 'cli', label: 'CLI', lang: 'sh',
     code: `npx instant-video encode ./clips                                                # every video in the folder
 npx instant-video encode ./clip.mp4 --id my-clip --out ./public/media --base-url /media
+npx instant-video encode ./clip.mp4 --full 720,1080                         # full player + scrub sprite
 npx instant-video encode https://www.youtube.com/watch?v=… --id spot     # URLs go through yt-dlp
 npx instant-video encode a.mp4 b.mp4 --storage blob                      # Vercel Blob
 npx instant-video encode a.mp4 --storage s3 --bucket my-bucket --region eu-west-1 --public-url https://cdn.example.com
@@ -110,7 +116,7 @@ export function initInstall() {
 
   const limits = [
     '<b>Safari and iOS are untested.</b> The iOS path (ManagedMediaSource) is written to the spec but has never run on a device. Firefox is untested too. All benchmarks are Chromium only.',
-    '<b>Previews, not a player.</b> Muted, looping clips only (no audio track is encoded), 7 s by default.',
+    '<b>Full audio follows the source.</b> Preview renditions stay silent and lightweight; optional full renditions carry AAC when the input has audio.',
     '<b>Cold hovers are not faster.</b> The win comes from having bytes and a decoded frame 0 before the pointer arrives. A cold hover on a card that was never prefetched or predicted is no faster than a plain video.',
     '<b>Short keyframe intervals cost size.</b> The 360p H.264 file is about 60% larger than a normally encoded clip of the same length. You pay it only when a clip is played; idle prefetch costs about one head (≈ 40 KB) per card near the viewport.',
     '<b>Browser requirements.</b> MediaSource (or ManagedMediaSource) for the fast path, plus fetch, IntersectionObserver and custom elements.',

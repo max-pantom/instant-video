@@ -18,6 +18,7 @@ export const icons = {
   "download": "<path d=\"M2.75 11.75L2.75 12.25C2.75 13.583 3.417 14.25 4.75 14.25L11.25 14.25C12.583 14.25 13.25 13.583 13.25 12.25L13.25 11.75\" fill=\"none\" stroke=\"currentColor\" /><path d=\"M7.75 1.75L7.75 9.25M5 6.5L7.29 8.79Q7.75 9.25 8.21 8.79L10.5 6.5\" fill=\"none\" stroke=\"currentColor\" />",
   "plus": "<line x1=\"2.75\" y1=\"7.75\" x2=\"13.25\" y2=\"7.75\" fill=\"none\" stroke=\"currentColor\" /><line x1=\"7.75\" y1=\"2.75\" x2=\"7.75\" y2=\"13.25\" fill=\"none\" stroke=\"currentColor\" />",
   "clock": "<circle cx=\"8\" cy=\"8\" r=\"6.25\" fill=\"none\" stroke=\"currentColor\" /><path d=\"M7.75 4.75L7.75 7.65Q7.75 8.25 8.35 8.25L10.25 8.25\" fill=\"none\" stroke=\"currentColor\" />"
+  ,"close": "<path d=\"M3.75 3.75L12.25 12.25M12.25 3.75L3.75 12.25\" fill=\"none\" stroke=\"currentColor\" />"
 } as const
 export type IconName = keyof typeof icons
 

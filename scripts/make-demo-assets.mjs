@@ -17,7 +17,9 @@ const ids = []
 for (const [id, lavfi] of Object.entries(sources)) {
   const file = join(tmp, `${id}.mp4`)
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', lavfi, '-t', '7', '-pix_fmt', 'yuv420p', file])
-  execFileSync('node', ['dist/cli.js', 'encode', file, '--id', id, '--out', 'demo/assets', '--base-url', 'assets/', '--no-skip-black'], { stdio: 'inherit' })
+  const args = ['dist/cli.js', 'encode', file, '--id', id, '--out', 'demo/assets', '--base-url', 'assets/', '--no-skip-black']
+  if (id === 'gradients') args.push('--full', '720,1080')
+  execFileSync('node', args, { stdio: 'inherit' })
   ids.push(id)
 }
 rmSync(tmp, { recursive: true, force: true })

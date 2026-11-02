@@ -1,5 +1,5 @@
-import { C as Config, S as Size, I as InstantSource, K as Kind, R as Rendition } from './element-B5V1xOLP.js';
-export { a as InstantVideoElement } from './element-B5V1xOLP.js';
+import { C as Config, S as Size, I as InstantSource, K as Kind, R as Rendition } from './element-DSN8kbDx.js';
+export { F as FullQuality, a as FullRendition, b as FullSource, c as InstantVideoElement, T as ThumbnailSprite } from './element-DSN8kbDx.js';
 
 declare const config: Config;
 declare function configure(patch: Partial<Config>): void;

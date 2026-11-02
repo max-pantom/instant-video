@@ -1,5 +1,5 @@
 {
-  "v": 1,
+  "v": 2,
   "dur": 7,
   "fps": 25,
   "gop": 12,
@@ -11,21 +11,21 @@
         "codec": "avc1.4D401F",
         "headDur": 0.96,
         "dur": 7,
-        "headBytes": 10871,
-        "tailBytes": 53509,
-        "head": "assets/gradients/m-avc-5d9e223f46dd.head.mp4",
-        "tail": "assets/gradients/m-avc-bd672066f15b.tail.m4s",
-        "full": "assets/gradients/m-avc-bc2f3c84fd53.full.mp4",
-        "fullBytes": 62776
+        "headBytes": 14006,
+        "tailBytes": 91810,
+        "head": "assets/gradients/m-avc-b96816f32065.head.mp4",
+        "tail": "assets/gradients/m-avc-6f80e6971fa4.tail.m4s",
+        "full": "assets/gradients/m-avc-2270a9e0cc69.full.mp4",
+        "fullBytes": 104212
       },
       "av1": {
         "codec": "av01.0.01M.08",
         "headDur": 0.96,
         "dur": 7,
-        "headBytes": 3780,
-        "tailBytes": 17871,
-        "head": "assets/gradients/m-av1-e8b7c713d5cf.head.mp4",
-        "tail": "assets/gradients/m-av1-2cfd5bdba341.tail.m4s"
+        "headBytes": 2906,
+        "tailBytes": 16224,
+        "head": "assets/gradients/m-av1-0e41677bf85a.head.mp4",
+        "tail": "assets/gradients/m-av1-5c364c999afc.tail.m4s"
       }
     },
     "s": {
@@ -33,27 +33,80 @@
         "codec": "avc1.4D401F",
         "headDur": 0.96,
         "dur": 7,
-        "headBytes": 5502,
-        "tailBytes": 22082,
-        "head": "assets/gradients/s-avc-d716c1c0f59e.head.mp4",
-        "tail": "assets/gradients/s-avc-8a674329b33e.tail.m4s",
-        "full": "assets/gradients/s-avc-b4aa950c581e.full.mp4",
-        "fullBytes": 25980
+        "headBytes": 5101,
+        "tailBytes": 25429,
+        "head": "assets/gradients/s-avc-3860c011fb10.head.mp4",
+        "tail": "assets/gradients/s-avc-2ae7662a6605.tail.m4s",
+        "full": "assets/gradients/s-avc-201c2812aab9.full.mp4",
+        "fullBytes": 28926
       },
       "av1": {
         "codec": "av01.0.00M.08",
         "headDur": 0.96,
         "dur": 7,
-        "headBytes": 2618,
-        "tailBytes": 11702,
-        "head": "assets/gradients/s-av1-120f519253e0.head.mp4",
-        "tail": "assets/gradients/s-av1-45aa7b53ba4d.tail.m4s"
+        "headBytes": 2202,
+        "tailBytes": 10294,
+        "head": "assets/gradients/s-av1-122100188907.head.mp4",
+        "tail": "assets/gradients/s-av1-56fe610f4df0.tail.m4s"
       }
     }
   },
   "poster": {
-    "jpg": "assets/gradients/p-d484bb3122b2.jpg",
-    "webp": "assets/gradients/p-86e8721c6800.webp",
-    "avif": "assets/gradients/p-de0027e9290e.avif"
+    "jpg": "assets/gradients/p-9168f98a87cd.jpg",
+    "webp": "assets/gradients/p-8f2e1ca17333.webp",
+    "avif": "assets/gradients/p-f0019ba58f15.avif"
+  },
+  "full": {
+    "r": {
+      "720": {
+        "avc": {
+          "codec": "avc1.640028",
+          "src": "assets/gradients/full-720-avc-2dcf15791337.mp4",
+          "fallback": "assets/gradients/full-720-avc-c90722278674.progressive.mp4",
+          "w": 1280,
+          "h": 720,
+          "dur": 7,
+          "bytes": 605763,
+          "fallbackBytes": 604406
+        },
+        "av1": {
+          "codec": "av01.0.05M.08",
+          "src": "assets/gradients/full-720-av1-09022f3bf0fc.mp4",
+          "w": 1280,
+          "h": 720,
+          "dur": 7,
+          "bytes": 58968
+        }
+      },
+      "1080": {
+        "avc": {
+          "codec": "avc1.64002A",
+          "src": "assets/gradients/full-1080-avc-c3a9676a165d.mp4",
+          "fallback": "assets/gradients/full-1080-avc-b44f9340dfbe.progressive.mp4",
+          "w": 1920,
+          "h": 1080,
+          "dur": 7,
+          "bytes": 1283361,
+          "fallbackBytes": 1282044
+        },
+        "av1": {
+          "codec": "av01.0.08M.08",
+          "src": "assets/gradients/full-1080-av1-92f8bcdffd01.mp4",
+          "w": 1920,
+          "h": 1080,
+          "dur": 7,
+          "bytes": 110511
+        }
+      }
+    },
+    "sprite": {
+      "src": "assets/gradients/sprite-713733f8dc8e.jpg",
+      "width": 160,
+      "height": 90,
+      "columns": 6,
+      "rows": 2,
+      "count": 7,
+      "interval": 1
+    }
   }
 }
