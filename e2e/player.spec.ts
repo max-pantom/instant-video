@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 
 test('hover preview expands continuously and supports quality and keyboard controls', async ({ page }) => {
+  const mediaRequests: Array<{ url: string; range?: string }> = []
+  page.on('request', (request) => {
+    if (request.url().includes('/assets/')) mediaRequests.push({ url: request.url(), range: request.headers().range })
+  })
   await page.goto('/')
   const card = page.locator('#hero-grid .card').first()
   const player = card.locator('instant-video')
@@ -8,6 +12,8 @@ test('hover preview expands continuously and supports quality and keyboard contr
   await card.hover()
   await expect.poll(() => player.evaluate((el) => el.shadowRoot?.querySelector('video')?.currentTime ?? 0)).toBeGreaterThan(0.05)
   const before = await player.evaluate((el) => el.shadowRoot!.querySelector('video')!.currentTime)
+  expect(mediaRequests.filter((request) => request.url.includes('/assets/catalog/poster-catalog-'))).toHaveLength(1)
+  expect(mediaRequests.some((request) => request.url.endsWith('.mp4') && request.range?.startsWith('bytes=0-'))).toBe(true)
 
   await card.click({ position: { x: 120, y: 90 } })
   await expect(player).toHaveAttribute('mode', 'player')

@@ -36,6 +36,13 @@ const sizes: [string, string, string][] = [
   ['poster JPEG', '16.2 KB', '55.1 KB'],
 ]
 
+const requests: [string, string, string][] = [
+  ['12-card poster grid', '12 GETs', '1 GET'],
+  ['settled grid + first warm hover', '25 GETs', '14 GETs'],
+  ['incremental warm hover', '1 GET', '1 GET'],
+  ['preview objects / rendition', '2 objects', '1 object'],
+]
+
 type Metric = 'playing' | 'visible' | 'frame'
 
 export function initBench() {
@@ -84,4 +91,5 @@ export function initBench() {
     rows.map((r) => `<tr class="${r.isNew ? 'new' : ''}"><td>${r.name}</td><td>${c(r.visible)}</td><td>${c(r.frame)}</td><td>${c(r.motion)}</td><td>${c(r.playing)}</td></tr>`).join('') +
     `</tbody>`
   document.getElementById('sizes')!.innerHTML = sizes.map(([k, med, p95]) => `<div><dt>${k}</dt><dd>${med} <span class="dim">/ p95 ${p95}</span></dd></div>`).join('')
+  document.getElementById('requests')!.innerHTML = requests.map(([k, before, after]) => `<div><dt>${k}</dt><dd>${before} <span class="dim">→</span> ${after}</dd></div>`).join('')
 }

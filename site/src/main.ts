@@ -1,13 +1,13 @@
 import './styles.css'
 import { configure, quality } from 'instant-video'
-import type { InstantSource, InstantVideoElement } from 'instant-video'
+import type { InstantSource, InstantVideoElement, PosterCatalog } from 'instant-video'
 import { icon, type IconName } from './icons'
 import { initBench } from './bench'
 import { initSteps } from './steps'
 import { initInstall } from './install'
 import { copyText } from './util'
 
-configure({ predict: true, prefetch: true })
+configure({ predict: true, prefetch: 'viewport' })
 
 const $ = <T extends HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T
 const reduced = matchMedia('(prefers-reduced-motion: reduce)')
@@ -43,6 +43,7 @@ document.querySelectorAll<HTMLElement>('[data-copy]').forEach((btn) => {
 const ids: string[] = await (await fetch('/assets/index.json')).json()
 const clips: Record<string, InstantSource> = {}
 await Promise.all(ids.map(async (id) => (clips[id] = await (await fetch(`/assets/${id}.json`)).json())))
+const posterCatalog: PosterCatalog | null = await fetch('/assets/posters.json').then((response) => response.ok ? response.json() : null).catch(() => null)
 
 const touchOnly = matchMedia('(hover: none)').matches
 
@@ -140,9 +141,13 @@ function makeCard({ id, i, tint, onMeasure }: CardOpts) {
   card.setAttribute('data-iv-target', '')
   card.style.setProperty('--i', String(i))
   const p = src.poster!
+  const cell = posterCatalog?.items[id]
+  const catalogPoster = cell && posterCatalog
+    ? `<div class="catalog-poster" style="background-image:url('${posterCatalog.src}');background-size:${posterCatalog.columns * 100}% ${posterCatalog.rows * 100}%;background-position:${posterCatalog.columns > 1 ? (cell.x / cell.width) / (posterCatalog.columns - 1) * 100 : 0}% ${posterCatalog.rows > 1 ? (cell.y / cell.height) / (posterCatalog.rows - 1) * 100 : 0}%"></div>`
+    : `<picture><source srcset="${p.avif}" type="image/avif"><source srcset="${p.webp}" type="image/webp"><img src="${p.jpg}" alt="" width="${src.w}" height="${src.h}" decoding="async" draggable="false"></picture>`
   card.innerHTML = `
     <div class="card-media" style="filter:hue-rotate(${tint}deg)">
-      <picture><source srcset="${p.avif}" type="image/avif"><source srcset="${p.webp}" type="image/webp"><img src="${p.jpg}" alt="" width="${src.w}" height="${src.h}" decoding="async" draggable="false"></picture>
+      ${catalogPoster}
       <instant-video></instant-video>
       <div class="shade"></div>
     </div>

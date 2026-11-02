@@ -1,5 +1,5 @@
-import { C as Config, S as Size, I as InstantSource, K as Kind, R as Rendition } from './element-DSN8kbDx.js';
-export { F as FullQuality, a as FullRendition, b as FullSource, c as InstantVideoElement, T as ThumbnailSprite } from './element-DSN8kbDx.js';
+import { C as Config, S as Size, I as InstantSource, K as Kind, R as Rendition } from './element-BpGIbhgy.js';
+export { F as FullQuality, a as FullRendition, b as FullSource, c as InstantVideoElement, P as PosterCatalog, d as PosterCatalogItem, T as ThumbnailSprite } from './element-BpGIbhgy.js';
 
 declare const config: Config;
 declare function configure(patch: Partial<Config>): void;

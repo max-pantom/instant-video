@@ -1,5 +1,5 @@
 {
-  "v": 1,
+  "v": 3,
   "dur": 7,
   "fps": 25,
   "gop": 12,
@@ -12,9 +12,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 4466,
-        "tailBytes": 20043,
-        "head": "assets/bars/m-avc-968f2ad9b909.head.mp4",
-        "tail": "assets/bars/m-avc-56b04a5a96dc.tail.m4s",
+        "tailBytes": 20376,
+        "src": "assets/bars/m-avc-ecf807c795d3.mp4",
         "full": "assets/bars/m-avc-9dbb7fa95684.full.mp4",
         "fullBytes": 22905
       },
@@ -23,9 +22,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 4638,
-        "tailBytes": 25136,
-        "head": "assets/bars/m-av1-42e9f46e087a.head.mp4",
-        "tail": "assets/bars/m-av1-bf750dd1d71a.tail.m4s"
+        "tailBytes": 25469,
+        "src": "assets/bars/m-av1-82d1c75a12c3.mp4"
       }
     },
     "s": {
@@ -34,9 +32,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 3990,
-        "tailBytes": 16884,
-        "head": "assets/bars/s-avc-e4af9d25e7d4.head.mp4",
-        "tail": "assets/bars/s-avc-83f35e24d0f6.tail.m4s",
+        "tailBytes": 17217,
+        "src": "assets/bars/s-avc-7645efffd2e1.mp4",
         "full": "assets/bars/s-avc-52a390f8cc13.full.mp4",
         "fullBytes": 19270
       },
@@ -45,9 +42,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 3774,
-        "tailBytes": 19634,
-        "head": "assets/bars/s-av1-6677e8d382f6.head.mp4",
-        "tail": "assets/bars/s-av1-f1a4c242ecd5.tail.m4s"
+        "tailBytes": 19967,
+        "src": "assets/bars/s-av1-4ea21af8f57c.mp4"
       }
     }
   },

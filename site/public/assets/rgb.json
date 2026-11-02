@@ -1,5 +1,5 @@
 {
-  "v": 1,
+  "v": 3,
   "dur": 7,
   "fps": 25,
   "gop": 12,
@@ -12,9 +12,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 6827,
-        "tailBytes": 34330,
-        "head": "assets/rgb/m-avc-2db0a70cac65.head.mp4",
-        "tail": "assets/rgb/m-avc-34db1013a3a9.tail.m4s",
+        "tailBytes": 34663,
+        "src": "assets/rgb/m-avc-b0cb3a77520c.mp4",
         "full": "assets/rgb/m-avc-fa157075352b.full.mp4",
         "fullBytes": 39553
       },
@@ -23,9 +22,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 3659,
-        "tailBytes": 18513,
-        "head": "assets/rgb/m-av1-929b76dd2786.head.mp4",
-        "tail": "assets/rgb/m-av1-151f9df55e7d.tail.m4s"
+        "tailBytes": 18846,
+        "src": "assets/rgb/m-av1-b246b13d3598.mp4"
       }
     },
     "s": {
@@ -34,9 +32,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 4275,
-        "tailBytes": 18446,
-        "head": "assets/rgb/s-avc-c70d54dd4064.head.mp4",
-        "tail": "assets/rgb/s-avc-a5bea86b96cd.tail.m4s",
+        "tailBytes": 18779,
+        "src": "assets/rgb/s-avc-ce8c5553294b.mp4",
         "full": "assets/rgb/s-avc-19fe379c99a2.full.mp4",
         "fullBytes": 21117
       },
@@ -45,9 +42,8 @@
         "headDur": 0.96,
         "dur": 7,
         "headBytes": 2836,
-        "tailBytes": 12630,
-        "head": "assets/rgb/s-av1-3e381f3f155e.head.mp4",
-        "tail": "assets/rgb/s-av1-34f7a077340e.tail.m4s"
+        "tailBytes": 12963,
+        "src": "assets/rgb/s-av1-60fb18b9b0cb.mp4"
       }
     }
   },

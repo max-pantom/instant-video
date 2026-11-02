@@ -39,7 +39,7 @@ Options
   -h, --help           show this help
   -v, --version        show the version
 
-Needs ffmpeg (libx264, libsvtav1) on the PATH. blob storage reads BLOB_READ_WRITE_TOKEN, s3 the usual AWS_* variables.
+Needs ffmpeg (libx264, libsvtav1) on the PATH. R2 uses Wrangler OAuth; blob and s3 use their usual credentials.
 `
 
 const args = process.argv.slice(2)
