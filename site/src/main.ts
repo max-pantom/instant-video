@@ -46,6 +46,74 @@ await Promise.all(ids.map(async (id) => (clips[id] = await (await fetch(`/assets
 
 const touchOnly = matchMedia('(hover: none)').matches
 
+// ---- Stageshow hero: one real clip, one interaction, one measured payoff --------------------------------
+{
+  const stage = $('#hero-show')
+  const card = $('#hs-card')
+  const iv = $('#hs-video') as InstantVideoElement
+  const status = $('#hs-status')
+  const time = $('#hs-time')
+  const meta = $('#hs-meta')
+  const clip = clips.test ?? clips[ids[0]]
+  const picture = $('#hs-picture')
+  const sources = picture.querySelectorAll<HTMLSourceElement>('source')
+  const image = picture.querySelector<HTMLImageElement>('img')!
+  sources[0].srcset = clip.poster!.avif!
+  sources[1].srcset = clip.poster!.webp!
+  image.src = clip.poster!.jpg!
+  image.width = clip.w
+  image.height = clip.h
+  iv.source = clip
+  iv.warmed = true
+  meta.textContent = `${Math.round(clip.r.m!.avc!.headBytes / 1024)} KB head · H.264`
+
+  let active = false
+  let t0 = 0
+  let swapTimer = 0
+  const swap = (nextStatus: string, nextTime: string) => {
+    clearTimeout(swapTimer)
+    stage.dataset.switching = ''
+    swapTimer = window.setTimeout(() => {
+      status.textContent = nextStatus
+      time.textContent = nextTime
+      delete stage.dataset.switching
+    }, reduced.matches ? 0 : 110)
+  }
+  const start = () => {
+    if (active) return
+    active = true
+    t0 = performance.now()
+    swap('Starting', 'decoder waking…')
+    iv.active = true
+  }
+  const stop = () => {
+    if (!active) return
+    active = false
+    iv.active = false
+    delete stage.dataset.playing
+    $('#hs-card-state').textContent = 'Ready'
+    swap('Decoded', 'frame 0 ready')
+  }
+  iv.addEventListener('playing', () => {
+    if (!active) return
+    const ms = performance.now() - t0
+    stage.dataset.playing = ''
+    $('#hs-card-state').textContent = 'Playing'
+    swap('Playing', `${fmt(ms)} ms to motion`)
+  })
+  card.addEventListener('pointerenter', (e) => e.pointerType !== 'touch' && start())
+  card.addEventListener('pointerleave', (e) => e.pointerType !== 'touch' && stop())
+  card.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'touch') active ? stop() : start()
+  })
+  card.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    active ? stop() : start()
+  })
+  card.addEventListener('blur', stop)
+}
+
 interface CardOpts {
   id: string
   i: number

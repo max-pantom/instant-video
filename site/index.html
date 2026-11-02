@@ -42,6 +42,36 @@
         </button>
         <a class="pill ghost" href="#install">Usage <span data-icon="arrow-right"></span></a>
       </div>
+      <figure class="hero-show" id="hero-show" aria-label="Live instant-video product demo">
+        <div class="hs-window">
+          <div class="hs-chrome">
+            <span class="hs-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="hs-address mono">archive.local / motion</span>
+          </div>
+          <aside class="hs-side" aria-hidden="true">
+            <i></i><i class="on"></i><i></i><i></i><i></i>
+          </aside>
+          <div class="hs-body">
+            <div class="hs-head"><span>Creative archive</span><b class="mono">482 clips</b></div>
+            <div class="hs-cards">
+              <div class="hs-card hs-card--focus" id="hs-card" data-iv-target tabindex="0" role="button" aria-label="Hover to play the warmed preview">
+                <picture id="hs-picture"><source type="image/avif"><source type="image/webp"><img alt="Synthetic test clip" decoding="async"></picture>
+                <instant-video id="hs-video"></instant-video>
+                <span class="hs-card-copy"><b>test pattern</b><i class="mono" id="hs-card-state">Ready</i></span>
+              </div>
+              <div class="hs-card hs-card--filler" aria-hidden="true"><i></i><span></span></div>
+              <div class="hs-card hs-card--filler" aria-hidden="true"><i></i><span></span></div>
+              <div class="hs-card hs-card--filler" aria-hidden="true"><i></i><span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="hs-signal" aria-live="polite">
+          <span class="hs-signal-top mono"><i></i><b id="hs-status">Decoded</b></span>
+          <strong id="hs-time">frame 0 ready</strong>
+          <span class="mono dim" id="hs-meta">34 KB head · H.264</span>
+        </div>
+        <figcaption class="mono">A real player. Hover the selected clip.</figcaption>
+      </figure>
       <p class="hint mono"><span class="hint-fine">Hover a card. The number is the measured pointer-enter → <code>playing</code> time, in your browser, right now.</span><span class="hint-coarse">Tap a card. The number is the measured tap → <code>playing</code> time, in your browser, right now.</span></p>
       <div class="grid" id="hero-grid"></div>
       <p class="foot-note mono" id="hero-stat" aria-live="polite">Measuring starts on your first hover. Twelve cards reuse four synthetic test-pattern clips, tinted.</p>
