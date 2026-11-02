@@ -8,7 +8,31 @@ instant-video does all of that **before** the pointer arrives, so the hover only
 
 ## Numbers
 
-@@BENCH@@
+Hover latency measured on the live Museum of Ads site (the library's first user): Chromium 156, 1440×900, no
+throttling, 24 hovers per scenario on distinct cards, median / p95 in ms from pointer-enter, 51 clips.
+*Visible* = the video is on screen; *playing* = the `playing` event. Reproduce with `scripts/bench.mjs` in
+[museum-of-ads](https://github.com/max-pantom/museum-of-ads).
+
+| scenario | engine | visible | playing |
+|---|---|---|---|
+| cold, predicted pointer | plain `<video>` preview | 200 / 249 | 152 / 186 |
+| cold, predicted pointer | **instant-video** | **33 / 35** | **20 / 22** |
+| cold, teleport onto the card | plain `<video>` preview | 203 / 251 | 146 / 187 |
+| cold, teleport onto the card | **instant-video** | **29 / 40** | **20 / 29** |
+| warm (cached), teleport | plain `<video>` preview | 80 / 105 | 26 / 34 |
+| warm (cached), teleport | **instant-video** | **26 / 32** | **17 / 27** |
+| cold, teleport, *idle prefetch off* | **instant-video** | 147 / 596 | 144 / 591 |
+
+A hover reaches `playing` in about 20 ms and the clip is on screen (frame 0, identical to the poster) in about 33 ms.
+The first *new* frame lands at about 50 ms, which is the floor for a 25 fps clip, not a loading cost. The last row is the
+honest caveat: without the idle head prefetch and pointer prediction, a cold hover is no faster than a plain video
+(median 144 vs 146 ms to `playing`) and has a worse tail. The win comes from having bytes and a decoded frame 0 before
+the pointer arrives, not from the container format alone.
+
+Sizes (51 clips, median): head 360p H.264 39 KB / AV1 26 KB, 240p H.264 14 KB; tail 360p H.264 286 KB; poster AVIF 5.5 KB.
+
+Caveats: local machine to a CDN is a fast path; one browser engine (Chromium); no CPU or network throttling; real devices
+and Safari/iOS were not benchmarked.
 
 ## Install
 
