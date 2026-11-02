@@ -9,7 +9,7 @@ const out = join(here, '..', 'vendor', 'instant-video')
 rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 const entry = ['index.js', 'index.d.ts']
-const refs = entry.flatMap((f) => [...readFileSync(join(root, 'dist', f), 'utf8').matchAll(/\.\/(chunk-[^'";]+\.js|element-[^'";]+\.d\.ts)/g)].map((m) => m[1]))
+const refs = entry.flatMap((f) => [...readFileSync(join(root, 'dist', f), 'utf8').matchAll(/\.\/(chunk-[^'";]+\.js|element-[^'";]+\.js)/g)].map((m) => m[1].startsWith('element-') ? m[1].replace(/\.js$/, '.d.ts') : m[1]))
 for (const f of new Set([...entry, ...refs])) {
   cpSync(join(root, 'dist', f), join(out, f))
   if (f.endsWith('.js') && existsSync(join(root, 'dist', `${f}.map`))) cpSync(join(root, 'dist', `${f}.map`), join(out, `${f}.map`))
