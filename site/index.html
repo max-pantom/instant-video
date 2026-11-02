@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0a">
+<title>instant-video · video that starts in ~20 ms</title>
+<meta name="description" content="A framework-agnostic <instant-video> custom element that fetches and decodes the first frame before the pointer arrives, so a hover only has to press play. MIT.">
+<meta property="og:title" content="instant-video">
+<meta property="og:description" content="Hover-preview video that starts in ~20 ms (Chromium, desktop, fast link).">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="app">
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="instant-video, top of page">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>instant-video</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a class="pill nav-l" href="#race">Race</a>
+      <a class="pill nav-l" href="#how">How it works</a>
+      <a class="pill nav-l" href="#bench">Bench</a>
+      <a class="pill nav-l" href="#install">Install</a>
+      <a class="pill" href="https://github.com/max-pantom/instant-video" target="_blank" rel="noopener" data-icon="git-branch">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- 1 · hero -->
+    <section class="hero" id="top">
+      <p class="eyebrow mono">&lt;instant-video&gt; · MIT · zero dependencies in the browser</p>
+      <h1>Video that starts in <span class="acc">~20&nbsp;ms</span>.</h1>
+      <p class="lede">On a normal <code>&lt;video&gt;</code> a hover pays for connecting, fetching, parsing, creating a decoder and decoding the first frame. instant-video does all of that <em>before</em> the pointer arrives, so the hover only has to press play.</p>
+      <div class="hero-row">
+        <button class="cmd" type="button" data-copy="npm i github:max-pantom/instant-video" aria-label="Copy install command">
+          <span class="mono dim">$</span><code>npm i github:max-pantom/instant-video</code><span class="copy-i" data-icon="copy"></span>
+        </button>
+        <a class="pill ghost" href="#install">Usage <span data-icon="arrow-right"></span></a>
+      </div>
+      <p class="hint mono"><span class="hint-fine">Hover a card. The number is the measured pointer-enter → <code>playing</code> time, in your browser, right now.</span><span class="hint-coarse">Tap a card. The number is the measured tap → <code>playing</code> time, in your browser, right now.</span></p>
+      <div class="grid" id="hero-grid"></div>
+      <p class="foot-note mono" id="hero-stat" aria-live="polite">Measuring starts on your first hover. Twelve cards reuse four synthetic test-pattern clips, tinted.</p>
+    </section>
+
+    <!-- 2 · race -->
+    <section class="sec" id="race">
+      <div class="sec-h">
+        <p class="eyebrow mono">02 · the race</p>
+        <h2>Same clip, two engines.</h2>
+        <p class="sec-p">Both players start on the same gesture. The plain <code>&lt;video&gt;</code> sets its <code>src</code> at that moment (cache-busted, so every run is a cold fetch of the 515&nbsp;KB progressive file). The instant-video side already holds a decoded frame&nbsp;0.</p>
+      </div>
+      <div class="race" id="race-stage" tabindex="0" aria-label="Race stage: hover, tap or press Enter to start both players">
+        <figure class="lane" id="lane-plain">
+          <div class="media"><img alt="" decoding="async"><video muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video></div>
+          <figcaption><span class="mono dim">plain &lt;video&gt;</span><b class="ms mono" data-ms>—</b></figcaption>
+        </figure>
+        <figure class="lane new" id="lane-iv">
+          <div class="media" data-iv-target><img alt="" decoding="async"><instant-video></instant-video></div>
+          <figcaption><span class="mono dim">instant-video</span><b class="ms mono" data-ms>—</b></figcaption>
+        </figure>
+      </div>
+      <div class="race-bar">
+        <button class="pill" type="button" id="race-run" data-icon="play">Run race</button>
+        <div class="seg" role="group" aria-label="Replay speed">
+          <button class="pill" type="button" data-speed="1" aria-pressed="false">1×</button>
+          <button class="pill" type="button" data-speed="0.25" aria-pressed="false">0.25×</button>
+          <button class="pill" type="button" data-speed="0.05" aria-pressed="true">0.05×</button>
+        </div>
+        <span class="mono dim" id="race-verdict" aria-live="polite">Hover or tap the stage.</span>
+      </div>
+      <div class="replay" id="replay" aria-hidden="true">
+        <div class="rp-row"><span class="mono dim">video</span><div class="rp-track"><i class="rp-fill" id="rp-a"></i><b class="rp-end" id="rp-a-end"></b></div></div>
+        <div class="rp-row"><span class="mono dim">instant</span><div class="rp-track new"><i class="rp-fill" id="rp-b"></i><b class="rp-end" id="rp-b-end"></b></div></div>
+        <div class="rp-axis mono dim"><span>0 ms</span><span id="rp-clock">slow-mo replay</span><span id="rp-max"></span></div>
+        <i class="rp-head" id="rp-head"></i>
+      </div>
+
+      <div class="predict">
+        <div class="predict-h">
+          <div>
+            <h3>Cursor prediction</h3>
+            <p class="sec-p">The engine projects the pointer ~180&nbsp;ms ahead (velocity over the last 24–140&nbsp;ms) and warms the card it is heading to. Turn the overlay on and sweep across the cards.</p>
+          </div>
+          <button class="pill toggle" type="button" id="pred-toggle" aria-pressed="true"><span class="sw" aria-hidden="true"></span>Overlay</button>
+        </div>
+        <div class="pgrid" id="pred-grid">
+          <canvas id="pred-canvas" aria-hidden="true"></canvas>
+        </div>
+        <p class="foot-note mono" id="pred-note">Pointer only. On touch there is no path to project; a touch warms the card on <code>pointerdown</code>.</p>
+      </div>
+    </section>
+
+    <!-- 3 · how -->
+    <section class="sec" id="how">
+      <div class="sec-h">
+        <p class="eyebrow mono">03 · how it works</p>
+        <h2>Six small decisions.</h2>
+        <p class="sec-p">Every hover cost is moved to a moment nobody is watching.</p>
+      </div>
+      <div class="steps" id="steps"></div>
+    </section>
+
+    <!-- 4 · bench -->
+    <section class="sec" id="bench">
+      <div class="sec-h">
+        <p class="eyebrow mono">04 · bench</p>
+        <h2>Measured, not promised.</h2>
+        <p class="sec-p">Chromium, desktop, fast link. 1440×900, no throttling, 24 hovers per scenario on distinct cards, median ms from pointer-enter, 2026-11-02 against museum-of-ads.vercel.app. Old engine is the plain <code>&lt;video&gt;</code> preview it replaced.</p>
+      </div>
+      <div class="bench-bar">
+        <div class="seg" role="group" aria-label="Metric">
+          <button class="pill" type="button" data-metric="playing" aria-pressed="true">playing</button>
+          <button class="pill" type="button" data-metric="visible" aria-pressed="false">visible</button>
+          <button class="pill" type="button" data-metric="frame" aria-pressed="false">first frame</button>
+        </div>
+        <span class="legend mono dim"><i class="lg old"></i>old <i class="lg new"></i>new</span>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="tbl-wrap" tabindex="0" role="region" aria-label="Full bench table">
+        <table class="tbl" id="tbl"></table>
+      </div>
+      <p class="foot-note mono">Cells are median / p95 ms. cold = fresh browser context · warm = HTTP cache primed · predicted = curved decelerating mouse path with prediction on · unpredicted = teleport onto the card with prediction off · noprefetch = idle head prefetch off. Source: museum-of-ads <code>docs/bench-results.md</code>. A 25 fps clip cannot show a new frame sooner than 40&nbsp;ms after start. Without prefetch and prediction, a cold unpredicted hover is no faster than the old engine (144 vs 146&nbsp;ms to <code>playing</code>).</p>
+      <div class="sizes">
+        <h3>Payload, 51 clips</h3>
+        <dl class="dl" id="sizes"></dl>
+      </div>
+    </section>
+
+    <!-- 5 · install -->
+    <section class="sec" id="install">
+      <div class="sec-h">
+        <p class="eyebrow mono">05 · install + usage</p>
+        <h2>One element, one folder.</h2>
+        <p class="sec-p">The browser entry points have no dependencies. The encoder needs <code>ffmpeg</code> (libx264 and libsvtav1) on the PATH.</p>
+      </div>
+      <div class="installs">
+        <button class="cmd" type="button" data-copy="npm i instant-video" aria-label="Copy npm install command"><span class="mono dim">$</span><code>npm i instant-video</code><span class="tagx mono">once published</span><span class="copy-i" data-icon="copy"></span></button>
+        <button class="cmd" type="button" data-copy="npm i github:max-pantom/instant-video" aria-label="Copy GitHub install command"><span class="mono dim">$</span><code>npm i github:max-pantom/instant-video</code><span class="tagx mono">works today</span><span class="copy-i" data-icon="copy"></span></button>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Usage" id="tabs"></div>
+      <div class="code" id="code-panel" role="tabpanel">
+        <button class="pill copy-btn" type="button" id="code-copy" data-icon="copy">Copy</button>
+        <pre><code id="code"></code></pre>
+      </div>
+    </section>
+
+    <!-- 6 · limits -->
+    <section class="sec" id="limits">
+      <div class="sec-h">
+        <p class="eyebrow mono">06 · limits + roadmap</p>
+        <h2>What it does not do.</h2>
+      </div>
+      <div class="two">
+        <div>
+          <h3>Limits</h3>
+          <ul class="list" id="limits-list"></ul>
+        </div>
+        <div>
+          <h3>Next</h3>
+          <ul class="list" id="road-list"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="f-l">
+      <a class="brand" href="#top"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>instant-video</span></a>
+      <span class="mono dim">MIT © max-pantom</span>
+    </div>
+    <nav class="f-links" aria-label="Footer">
+      <a class="pill" href="https://github.com/max-pantom/instant-video" target="_blank" rel="noopener" data-icon="git-branch">GitHub</a>
+      <a class="pill" href="https://museum-of-ads.vercel.app" target="_blank" rel="noopener">Used on Museum of Ads <span data-icon="arrow-up-right"></span></a>
+      <a class="spon" href="https://github.com/max-pantom/instant-video/issues" target="_blank" rel="noopener" aria-label="Sponsor slot, open"><span data-icon="plus"></span><span>Sponsor</span></a>
+    </nav>
+  </footer>
+</div>
+</body>
+</html>
