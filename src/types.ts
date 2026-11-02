@@ -14,10 +14,12 @@ export interface Rendition {
   fullBytes?: number
 }
 
-/** The `iv` object stored on an ad by scripts/make-instant.mjs. */
+/** The manifest written by `instant-video encode` (stored on whatever record owns the clip). */
 export interface InstantSource {
   v: number
   dur: number
+  fps?: number
+  gop?: number
   w: number
   h: number
   poster?: { avif?: string; webp?: string; jpg?: string }
