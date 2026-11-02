@@ -1,0 +1,5 @@
+export { InstantVideoElement } from './element'
+export { configure, config } from './config'
+export { quality } from './env'
+export { pick } from './codec'
+export type { Config, InstantSource, Rendition, Kind, Size } from './types'
