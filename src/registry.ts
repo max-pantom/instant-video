@@ -90,7 +90,7 @@ let raf = 0
 function project() {
   raf = 0
   const now = trail[trail.length - 1]
-  if (!config.predict || !now) return
+  if (!config.predict || !now || prefetchLimit() < 1) return
   const from = trail.find((s) => now.t - s.t >= 24 && now.t - s.t <= 140)
   if (!from) return
   const dt = now.t - from.t
