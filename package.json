@@ -2,28 +2,63 @@
   "name": "instant-video",
   "version": "0.1.0",
   "description": "Hover-preview videos that start in a few milliseconds: <instant-video> custom element, React wrapper, prediction, warm pool, fMP4/MSE head+tail loading, and an encoder CLI.",
-  "keywords": ["video", "hover", "preview", "mediasource", "fmp4", "web-component", "react", "av1", "h264"],
+  "keywords": [
+    "video",
+    "hover",
+    "preview",
+    "mediasource",
+    "fmp4",
+    "web-component",
+    "react",
+    "av1",
+    "h264"
+  ],
   "license": "MIT",
   "author": "max-pantom",
-  "repository": { "type": "git", "url": "git+https://github.com/max-pantom/instant-video.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/max-pantom/instant-video.git"
+  },
   "homepage": "https://github.com/max-pantom/instant-video#readme",
-  "bugs": { "url": "https://github.com/max-pantom/instant-video/issues" },
+  "bugs": {
+    "url": "https://github.com/max-pantom/instant-video/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
-    "./encode": { "types": "./dist/encode.d.ts", "import": "./dist/encode.js" },
-    "./storage": { "types": "./dist/storage.d.ts", "import": "./dist/storage.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./encode": {
+      "types": "./dist/encode.d.ts",
+      "import": "./dist/encode.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.js"
+    },
     "./package.json": "./package.json"
   },
-  "bin": { "instant-video": "./dist/cli.js" },
-  "files": ["dist", "README.md", "LICENSE"],
-  "engines": { "node": ">=18" },
+  "bin": {
+    "instant-video": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "tsup",
+    "build": "rm -rf dist && tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -37,9 +72,15 @@
     "react": ">=18"
   },
   "peerDependenciesMeta": {
-    "@aws-sdk/client-s3": { "optional": true },
-    "@vercel/blob": { "optional": true },
-    "react": { "optional": true }
+    "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@vercel/blob": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
