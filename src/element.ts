@@ -12,12 +12,15 @@ video.on{opacity:1;transition:none}
 `
 
 /**
- * <instant-video>
+ * <instant-video>  (fires a `playing` event when the clip is playing)
  *   .source  InstantSource (the ad's `iv`)      attr/prop `active`: play (loop, muted)
  *   .target  element that counts as the hit area (default: the parent)      attr/prop `warm`: get ready, don't play
  * Layout: fills its positioned parent, sits above the poster image; hidden until a frame is showing.
  */
-export class InstantVideoElement extends HTMLElement implements Registered {
+// importing on the server (SSR) must not throw: there is no HTMLElement there
+const Base = (typeof HTMLElement !== 'undefined' ? HTMLElement : class {}) as typeof HTMLElement
+
+export class InstantVideoElement extends Base implements Registered {
   static observedAttributes = ['active', 'warm']
   private _src: InstantSource | null = null
   private _target: Element | null = null

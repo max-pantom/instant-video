@@ -35,6 +35,8 @@ export class Player {
     v.disableRemotePlayback = true
     v.setAttribute('aria-hidden', 'true')
     v.addEventListener('error', () => this.fallback('video error ' + (v.error?.code ?? '') + ' ' + (v.error?.message ?? '')))
+    // media events do not cross the shadow boundary: re-emit `playing` on the <instant-video> element
+    v.addEventListener('playing', () => (host as ShadowRoot).host?.dispatchEvent(new Event('playing')))
     host.appendChild(v)
   }
 
