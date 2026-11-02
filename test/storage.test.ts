@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { blobStorage, fsStorage, s3Storage } from '../src/node/storage'
+import { blobStorage, fsStorage, r2Storage, s3Storage } from '../src/node/storage'
 
 let dir: string
 beforeEach(async () => void (dir = await mkdtemp(join(tmpdir(), 'iv-test-'))))
@@ -31,5 +31,22 @@ describe('optional storage adapters', () => {
 
   it('blobStorage explains the missing peer dependency', async () => {
     await expect(blobStorage().put('k', Buffer.from('x'), 'video/mp4')).rejects.toThrow(/@vercel\/blob/)
+  })
+})
+
+describe('r2Storage', () => {
+  it('uploads through Wrangler OAuth with immutable caching and returns the custom-domain URL', async () => {
+    let call: { command: string; args: string[] } | undefined
+    const storage = r2Storage({
+      bucket: 'museum-of-ads-media', publicUrl: 'https://media.primitive8.com', prefix: 'instant/',
+      run: async (command, args) => { call = { command, args }; expect((await readFile(args[args.indexOf('--file') + 1])).toString()).toBe('video') },
+    })
+    const url = await storage.put('clip/m-avc-deadbeef1234.mp4', Buffer.from('video'), 'video/mp4')
+    expect(url).toBe('https://media.primitive8.com/instant/clip/m-avc-deadbeef1234.mp4')
+    expect(call!.command).toBe('npx')
+    expect(call!.args).toEqual(expect.arrayContaining([
+      'wrangler', 'r2', 'object', 'put', 'museum-of-ads-media/instant/clip/m-avc-deadbeef1234.mp4',
+      '--remote', '--content-type', 'video/mp4', '--cache-control', 'public, max-age=31536000, immutable',
+    ]))
   })
 })

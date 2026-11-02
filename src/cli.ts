@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { encodePosterCatalog, encodeToStorage } from './node/encode'
-import { blobStorage, fsStorage, s3Storage, type Storage } from './node/storage'
+import { blobStorage, fsStorage, r2Storage, s3Storage, type Storage } from './node/storage'
 
 const exec = promisify(execFile)
 
@@ -21,13 +21,13 @@ Usage
 Options
   --out <dir>          where the manifest (<id>.json) and, for local storage, the files go   [./instant-video-out]
   --id <name>          id for a single input (default: the file name without extension)
-  --storage <kind>     local | blob | s3                                                      [local]
+  --storage <kind>     local | blob | s3 | r2                                                 [local]
   --base-url <url>     local: URL prefix written into the manifest, e.g. /media or https://cdn.example.com
-  --prefix <path>      blob / s3: key prefix inside the store                                 [instant/]
-  --bucket <name>      s3: bucket (or INSTANT_VIDEO_S3_BUCKET)
+  --prefix <path>      blob / s3 / r2: key prefix inside the store
+  --bucket <name>      s3 / r2 bucket
   --region <name>      s3: region
   --endpoint <url>     s3: custom endpoint for S3-compatible stores
-  --public-url <url>   s3: public base URL (CDN) used for the manifest URLs
+  --public-url <url>   s3 / r2 public base URL (CDN or R2 custom domain)
   --start <seconds>    where the clip starts in the source                                    [0]
   --duration <s>       clip length                                                            [7]
   --head <s>           length the first download (head) should cover                          [0.9]
@@ -96,7 +96,13 @@ async function main() {
     const bucket = opt('--bucket', process.env.INSTANT_VIDEO_S3_BUCKET)
     if (!bucket) throw new Error('--bucket is required for s3 storage')
     storage = s3Storage({ bucket, region: opt('--region'), endpoint: opt('--endpoint'), prefix: opt('--prefix'), publicUrl: opt('--public-url') })
-  } else throw new Error(`unknown storage "${kind}" (local, blob, s3)`)
+  } else if (kind === 'r2') {
+    const bucket = opt('--bucket')
+    const publicUrl = opt('--public-url')
+    if (!bucket) throw new Error('--bucket is required for r2 storage')
+    if (!publicUrl) throw new Error('--public-url is required for r2 storage')
+    storage = r2Storage({ bucket, publicUrl, prefix: opt('--prefix', '') })
+  } else throw new Error(`unknown storage "${kind}" (local, blob, s3, r2)`)
 
   await mkdir(out, { recursive: true })
   const tmp = await mkdtemp(join(tmpdir(), 'instant-video-src-'))

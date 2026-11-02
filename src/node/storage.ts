@@ -1,5 +1,10 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { promisify } from 'node:util'
+
+const exec = promisify(execFile)
 
 /**
  * Where encoded files go. `put` stores the bytes under `key` (e.g. `ad-1/m-avc-3f9a.head.mp4`) and returns the
@@ -89,6 +94,41 @@ export function s3Storage({ bucket, region, endpoint, prefix = 'instant/', publi
       if (publicUrl) return join_(publicUrl, prefix + key)
       if (endpoint) return join_(`${endpoint.replace(/\/+$/, '')}/${bucket}`, prefix + key)
       return `https://${bucket}.s3.${region ?? 'us-east-1'}.amazonaws.com/${prefix + key}`
+    },
+  }
+}
+
+export interface R2Options {
+  bucket: string
+  /** Public custom domain for this bucket, e.g. https://media.primitive8.com. */
+  publicUrl: string
+  /** Optional key prefix. Default: none. */
+  prefix?: string
+  /** Wrangler executable. Default uses `npx --yes wrangler`. */
+  wrangler?: string
+  /** Test/embedding hook; receives the executable and arguments. */
+  run?: (command: string, args: string[]) => Promise<void>
+}
+
+/** Cloudflare R2 via Wrangler OAuth. No API keys or SDK dependency required. */
+export function r2Storage({ bucket, publicUrl, prefix = '', wrangler = 'npx', run }: R2Options): Storage {
+  const execute = run ?? (async (command: string, args: string[]) => { await exec(command, args, { maxBuffer: 1 << 24 }) })
+  return {
+    async put(key, data, contentType) {
+      const work = await mkdtemp(join(tmpdir(), 'instant-video-r2-'))
+      const file = join(work, 'object')
+      try {
+        await writeFile(file, data)
+        const args = [
+          ...(wrangler === 'npx' ? ['--yes', 'wrangler'] : []),
+          'r2', 'object', 'put', `${bucket}/${prefix}${key}`,
+          '--remote', '--file', file, '--content-type', contentType, '--cache-control', CACHE,
+        ]
+        await execute(wrangler, args)
+        return join_(publicUrl, prefix + key)
+      } finally {
+        await rm(work, { recursive: true, force: true })
+      }
     },
   }
 }
