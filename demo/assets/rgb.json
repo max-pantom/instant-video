@@ -1,0 +1,59 @@
+{
+  "v": 1,
+  "dur": 7,
+  "fps": 25,
+  "gop": 12,
+  "w": 640,
+  "h": 360,
+  "r": {
+    "m": {
+      "avc": {
+        "codec": "avc1.4D401F",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 6827,
+        "tailBytes": 34330,
+        "head": "assets/rgb/m-avc-2db0a70cac65.head.mp4",
+        "tail": "assets/rgb/m-avc-34db1013a3a9.tail.m4s",
+        "full": "assets/rgb/m-avc-fa157075352b.full.mp4",
+        "fullBytes": 39553
+      },
+      "av1": {
+        "codec": "av01.0.01M.08",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 3659,
+        "tailBytes": 18513,
+        "head": "assets/rgb/m-av1-929b76dd2786.head.mp4",
+        "tail": "assets/rgb/m-av1-151f9df55e7d.tail.m4s"
+      }
+    },
+    "s": {
+      "avc": {
+        "codec": "avc1.4D401F",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 4275,
+        "tailBytes": 18446,
+        "head": "assets/rgb/s-avc-c70d54dd4064.head.mp4",
+        "tail": "assets/rgb/s-avc-a5bea86b96cd.tail.m4s",
+        "full": "assets/rgb/s-avc-19fe379c99a2.full.mp4",
+        "fullBytes": 21117
+      },
+      "av1": {
+        "codec": "av01.0.00M.08",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 2836,
+        "tailBytes": 12630,
+        "head": "assets/rgb/s-av1-3e381f3f155e.head.mp4",
+        "tail": "assets/rgb/s-av1-34f7a077340e.tail.m4s"
+      }
+    }
+  },
+  "poster": {
+    "jpg": "assets/rgb/p-0d2cbf418cf3.jpg",
+    "webp": "assets/rgb/p-86db1356586d.webp",
+    "avif": "assets/rgb/p-d080a65f35a5.avif"
+  }
+}

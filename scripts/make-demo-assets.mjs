@@ -6,10 +6,8 @@ import { join } from 'node:path'
 
 const sources = {
   bars: 'smptehdbars=size=640x360:rate=25',
-  mandelbrot: 'mandelbrot=size=640x360:rate=25',
   rgb: 'rgbtestsrc=size=640x360:rate=25',
   test: 'testsrc2=size=640x360:rate=25',
-  life: 'life=size=640x360:rate=25:mold=10:life_color=#00ff88:death_color=#112233:random_seed=7',
   gradients: 'gradients=size=640x360:rate=25:speed=0.02',
 }
 const tmp = 'demo/.src'
