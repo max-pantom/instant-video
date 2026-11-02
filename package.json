@@ -1,0 +1,17 @@
+{
+  "name": "instant-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hover-preview videos that start in a few milliseconds: <instant-video> custom element, prediction, warm pool, fMP4/MSE head+tail loading.",
+  "type": "module",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.tsx"
+  },
+  "sideEffects": ["./src/element.ts"],
+  "peerDependencies": { "react": ">=18" },
+  "peerDependenciesMeta": { "react": { "optional": true } }
+}
