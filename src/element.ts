@@ -21,12 +21,27 @@ video.on{opacity:1;transition:none}
 const Base = (typeof HTMLElement !== 'undefined' ? HTMLElement : class {}) as typeof HTMLElement
 
 export class InstantVideoElement extends Base implements Registered {
-  static observedAttributes = ['active', 'warm']
+  static observedAttributes = ['active', 'warm', 'mode']
   private _src: InstantSource | null = null
   private _target: Element | null = null
   private player?: Player
   private root!: ShadowRoot
   private on = false
+  private scrubRaf = 0
+  private scrubProgress = 0
+  private boundTarget?: Element
+  private readonly onPointerMove = (event: Event) => {
+    if (!this.on || this.mode !== 'scrub') return
+    const e = event as PointerEvent
+    if (e.pointerType === 'touch') return
+    const r = this.hitTarget.getBoundingClientRect()
+    if (!r.width) return
+    this.scrubProgress = (e.clientX - r.left) / r.width
+    if (!this.scrubRaf) this.scrubRaf = requestAnimationFrame(() => {
+      this.scrubRaf = 0
+      this.player?.scrub(this.scrubProgress)
+    })
+  }
 
   get source() {
     return this._src
@@ -47,7 +62,10 @@ export class InstantVideoElement extends Base implements Registered {
     if (t === this._target) return
     if (this.isConnected) unregister(this)
     this._target = t
-    if (this.isConnected) register(this)
+    if (this.isConnected) {
+      register(this)
+      this.bindTarget()
+    }
   }
   get hitTarget(): Element {
     return this._target ?? this.closest('[data-iv-target]') ?? this.parentElement ?? this
@@ -64,6 +82,13 @@ export class InstantVideoElement extends Base implements Registered {
   set warmed(v: boolean) {
     v ? this.setAttribute('warm', '') : this.removeAttribute('warm')
   }
+  /** `play` loops normally; `scrub` maps horizontal pointer position to the clip timeline. */
+  get mode(): 'play' | 'scrub' {
+    return this.getAttribute('mode') === 'scrub' ? 'scrub' : 'play'
+  }
+  set mode(v: 'play' | 'scrub') {
+    v === 'scrub' ? this.setAttribute('mode', 'scrub') : this.removeAttribute('mode')
+  }
 
   connectedCallback() {
     if (!this.root) {
@@ -74,11 +99,13 @@ export class InstantVideoElement extends Base implements Registered {
       this.setAttribute('aria-hidden', 'true')
     }
     register(this)
+    this.bindTarget()
     this.sync()
   }
 
   disconnectedCallback() {
     unregister(this)
+    this.unbindTarget()
     drop(this)
     this.cool()
   }
@@ -92,6 +119,21 @@ export class InstantVideoElement extends Base implements Registered {
     if (want) this.play()
     else if (this.on) this.pause()
     if (!want && this.hasAttribute('warm')) this.warm()
+  }
+
+  private bindTarget() {
+    const target = this.hitTarget
+    if (target === this.boundTarget) return
+    this.unbindTarget()
+    this.boundTarget = target
+    target.addEventListener('pointermove', this.onPointerMove, { passive: true })
+  }
+
+  private unbindTarget() {
+    this.boundTarget?.removeEventListener('pointermove', this.onPointerMove)
+    this.boundTarget = undefined
+    if (this.scrubRaf) cancelAnimationFrame(this.scrubRaf)
+    this.scrubRaf = 0
   }
 
   /** Get a decoded frame 0 ready without playing (idempotent; counts against the pool). */
@@ -115,7 +157,8 @@ export class InstantVideoElement extends Base implements Registered {
     const p = this.ensure()
     if (!p) return
     this.on = true
-    p.play()
+    if (this.mode === 'scrub') p.scrub(this.scrubProgress)
+    else p.play()
     touch(this)
     if (config.prefetch) prefetchFor(this)
   }

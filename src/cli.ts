@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -15,7 +15,7 @@ const HELP = `instant-video: encode clips for hover playback
 Usage
   instant-video encode <input...> [options]
 
-<input> is a video file, or a URL (downloaded with yt-dlp, which must be installed).
+<input> is a video file, a folder of videos, or a URL (downloaded with yt-dlp, which must be installed).
 
 Options
   --out <dir>          where the manifest (<id>.json) and, for local storage, the files go   [./instant-video-out]
@@ -30,6 +30,7 @@ Options
   --start <seconds>    where the clip starts in the source                                    [0]
   --duration <s>       clip length                                                            [7]
   --head <s>           length the first download (head) should cover                          [0.9]
+  --head-kb <kb>       target maximum size of each head; 0 disables budgeting                 [40]
   --no-skip-black      keep the start even if it is a black frame
   -h, --help           show this help
   -v, --version        show the version
@@ -43,7 +44,19 @@ const opt = (n: string, d?: string) => {
   const i = args.indexOf(n)
   return i >= 0 ? args[i + 1] : d
 }
-const VALUE_FLAGS = new Set(['--out', '--id', '--storage', '--base-url', '--prefix', '--bucket', '--region', '--endpoint', '--public-url', '--start', '--duration', '--head'])
+const VALUE_FLAGS = new Set(['--out', '--id', '--storage', '--base-url', '--prefix', '--bucket', '--region', '--endpoint', '--public-url', '--start', '--duration', '--head', '--head-kb'])
+const VIDEO_EXTS = new Set(['.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi'])
+
+async function videosIn(dir: string): Promise<string[]> {
+  const out: string[] = []
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...(await videosIn(path)))
+    else if (entry.isFile() && VIDEO_EXTS.has(extname(entry.name).toLowerCase())) out.push(path)
+  }
+  return out.sort()
+}
 
 async function main() {
   const cmd = args[0]
@@ -54,12 +67,20 @@ async function main() {
   }
   if (cmd !== 'encode') throw new Error(`unknown command "${cmd}" (try --help)`)
 
-  const inputs: string[] = []
+  const rawInputs: string[] = []
   for (let i = 1; i < args.length; i++) {
     if (VALUE_FLAGS.has(args[i])) i++
-    else if (!args[i].startsWith('-')) inputs.push(args[i])
+    else if (!args[i].startsWith('-')) rawInputs.push(args[i])
   }
-  if (!inputs.length) throw new Error('no input given (try --help)')
+  if (!rawInputs.length) throw new Error('no input given (try --help)')
+  const inputs: string[] = []
+  for (const input of rawInputs) {
+    if (/^https?:/.test(input)) inputs.push(input)
+    else if (!existsSync(input)) throw new Error(`not found: ${input}`)
+    else if ((await stat(input)).isDirectory()) inputs.push(...(await videosIn(input)))
+    else inputs.push(input)
+  }
+  if (!inputs.length) throw new Error('no video files found')
   if (inputs.length > 1 && opt('--id')) throw new Error('--id only works with a single input')
 
   const out = resolve(opt('--out', './instant-video-out')!)
@@ -75,9 +96,11 @@ async function main() {
 
   await mkdir(out, { recursive: true })
   const tmp = await mkdtemp(join(tmpdir(), 'instant-video-src-'))
+  const encodedIds: string[] = []
   try {
     for (const input of inputs) {
       const id = opt('--id') ?? (/^https?:/.test(input) ? new URL(input).pathname.split('/').filter(Boolean).pop() ?? 'clip' : basename(input, extname(input))).replace(/[^\w.-]+/g, '-')
+      if (encodedIds.includes(id)) throw new Error(`duplicate clip id "${id}"; rename one input or encode it separately with --id`)
       let file = input
       if (/^https?:/.test(input)) {
         const dir = join(tmp, id)
@@ -95,13 +118,16 @@ async function main() {
         start: Number(opt('--start', '0')),
         duration: Number(opt('--duration', '7')),
         head: Number(opt('--head', '0.9')),
+        headKb: Number(opt('--head-kb', '40')),
         skipBlack: !flag('--no-skip-black'),
       })
       const manifest = join(out, `${id}.json`)
       await writeFile(manifest, JSON.stringify(iv, null, 2) + '\n')
       const m = clip.sizes.r.m
       console.log(`ok  ${id}  ${iv.w}x${iv.h}  head ${(m.avc.head / 1024).toFixed(1)} KB (h264) / ${(m.av1.head / 1024).toFixed(1)} KB (av1)  ->  ${manifest}`)
+      encodedIds.push(id)
     }
+    if (kind === 'local') await writeFile(join(out, 'index.json'), JSON.stringify(encodedIds, null, 2) + '\n')
   } finally {
     await rm(tmp, { recursive: true, force: true })
   }

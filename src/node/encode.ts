@@ -19,6 +19,12 @@ export interface EncodeOptions {
   skipBlack?: boolean
   /** Length the first download (head) should cover, seconds. Default 0.9. */
   head?: number
+  /**
+   * Size budget for a head in KB (init segment plus the first fragments). A head over budget is re-encoded with
+   * a higher CRF on its first frames (H.264, so the rest of the clip keeps its quality) or on the whole clip
+   * (AV1), until it fits or the CRF boost cap is reached. 0 disables. Default 40.
+   */
+  headKb?: number
   fps?: number
   /** Keyframe interval in frames; every fragment starts on one. Default 12 (0.48 s at 25 fps). */
   gop?: number
@@ -45,12 +51,16 @@ export interface EncodedClip {
   startShifted: boolean
   artifacts: Artifact[]
   /** Byte sizes per file, for reports. */
-  sizes: { poster: Record<string, number>; r: Record<string, Record<string, { head: number; tail: number; full: number | null; codec: string }>> }
+  sizes: { poster: Record<string, number>; r: Record<string, Record<string, { head: number; tail: number; full: number | null; codec: string; boost: number }>> }
   /** Build the `InstantSource` once every artifact has a URL (`urls` maps artifact name → URL). */
   manifest(urls: Record<string, string>): InstantSource
 }
 
 const RENDITIONS: Record<Size, { h: number; avc: number; av1: number }> = { m: { h: 360, avc: 26, av1: 38 }, s: { h: 240, avc: 31, av1: 42 } }
+/** Most CRF steps a head may be pushed up to fit its budget. */
+const MAX_BOOST: Record<Kind, number> = { avc: 14, av1: 12 }
+/** Rough CRF steps per halving of the bytes. */
+const STEPS_PER_HALVING: Record<Kind, number> = { avc: 6, av1: 8 }
 const VERSION = 1
 
 // ---- ISO-BMFF helpers -----------------------------------------------------------------------------------
@@ -110,6 +120,7 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
   const fps = opts.fps ?? 25
   const gop = opts.gop ?? 12
   const headS = opts.head ?? 0.9
+  const budget = Math.max(0, opts.headKb ?? 40) * 1024
   const ffmpeg = opts.ffmpeg ?? process.env.FFMPEG ?? 'ffmpeg'
   const ffprobe = opts.ffprobe ?? process.env.FFPROBE ?? 'ffprobe'
   const cwebp = opts.cwebp ?? process.env.CWEBP ?? 'cwebp'
@@ -120,10 +131,11 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
   await mkdir(work, { recursive: true })
 
   const vf = (h: number) => `scale=-2:${h}:flags=lanczos:out_color_matrix=bt709:out_range=tv,fps=${fps}`
-  const codecs: Record<Kind, (crf: number) => string[]> = {
-    avc: (crf) => ['-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-pix_fmt', 'yuv420p', '-profile:v', 'main', '-level', '3.1',
-      '-x264-params', `keyint=${gop}:min-keyint=${gop}:scenecut=0:bframes=0:open-gop=0`, ...TAGS],
-    av1: (crf) => ['-c:v', 'libsvtav1', '-crf', String(crf), '-preset', '6', '-pix_fmt', 'yuv420p',
+  // `boost` raises the CRF of the head: x264 applies it to the first `headFrames` frames only (a zone), SVT-AV1 has no zones so it applies to the whole clip
+  const codecs: Record<Kind, (crf: number, boost: number, headFrames: number) => string[]> = {
+    avc: (crf, boost, headFrames) => ['-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-pix_fmt', 'yuv420p', '-profile:v', 'main', '-level', '3.1',
+      '-x264-params', `keyint=${gop}:min-keyint=${gop}:scenecut=0:bframes=0:open-gop=0${boost ? `:zones=0,${headFrames - 1},crf=${crf + boost}` : ''}`, ...TAGS],
+    av1: (crf, boost) => ['-c:v', 'libsvtav1', '-crf', String(crf + boost), '-preset', '6', '-pix_fmt', 'yuv420p',
       '-svtav1-params', `keyint=${gop}:irefresh-type=2:scd=0:lookahead=0`, '-g', String(gop), ...TAGS],
   }
 
@@ -143,30 +155,42 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
       if ((await luma(ss)) < 14) ss = ss0 // dark by design: keep the original start
     }
 
-    type Entry = Rendition & { _head: Buffer; _tail: Buffer; _full?: Buffer }
+    type Entry = Rendition & { _head: Buffer; _tail: Buffer; _full?: Buffer; boost: number }
     const r: Record<string, Record<string, Entry>> = {}
+    const fragDur = gop / fps
+    const nHeadWanted = Math.max(1, Math.ceil(headS / fragDur - 1e-6))
+
+    const encodeVariant = async (rk: Size, ck: Kind, boost: number): Promise<Entry & { file: string }> => {
+      const R = RENDITIONS[rk]
+      const f = join(work, `${rk}-${ck}.mp4`)
+      await run(ffmpeg, ['-y', '-v', 'error', '-ss', String(ss), '-i', input, '-t', String(dur), '-vf', vf(R.h), ...codecs[ck](R[ck], boost, nHeadWanted * gop),
+        '-movflags', 'cmaf+default_base_moof', '-an', f])
+      const { init, frags } = splitFragments(await readFile(f))
+      const frames = Number((await run(ffprobe, ['-v', 'error', '-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', f])).toString().trim())
+      // head = init + enough fragments to cover `head` seconds (at least one)
+      const nHead = Math.min(frags.length, nHeadWanted)
+      const head = Buffer.concat([init, ...frags.slice(0, nHead)])
+      const tail = Buffer.concat(frags.slice(nHead))
+      return { file: f, boost, codec: codecString(init), headDur: round3(nHead * fragDur), dur: round3(frames / fps), headBytes: head.length, tailBytes: tail.length, head: '', tail: '', _head: head, _tail: tail }
+    }
+
     let posterFrom = ''
-    for (const [rk, R] of Object.entries(RENDITIONS)) {
+    for (const rk of Object.keys(RENDITIONS) as Size[]) {
       r[rk] = {}
       for (const ck of ['avc', 'av1'] as const) {
-        const f = join(work, `${rk}-${ck}.mp4`)
-        await run(ffmpeg, ['-y', '-v', 'error', '-ss', String(ss), '-i', input, '-t', String(dur), '-vf', vf(R.h), ...codecs[ck](R[ck]),
-          '-movflags', 'cmaf+default_base_moof', '-an', f])
-        const { init, frags } = splitFragments(await readFile(f))
-        const frames = Number((await run(ffprobe, ['-v', 'error', '-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', f])).toString().trim())
-        const fragDur = gop / fps
-        // head = init + enough fragments to cover `head` seconds (at least one)
-        const nHead = Math.min(frags.length, Math.max(1, Math.ceil(headS / fragDur - 1e-6)))
-        const head = Buffer.concat([init, ...frags.slice(0, nHead)])
-        const tail = Buffer.concat(frags.slice(nHead))
-        const e: Entry = { codec: codecString(init), headDur: round3(nHead * fragDur), dur: round3(frames / fps), headBytes: head.length, tailBytes: tail.length, head: '', tail: '', _head: head, _tail: tail }
+        let e = await encodeVariant(rk, ck, 0)
+        // over budget: spend fewer bits on the head (CRF steps ≈ bytes ∕ 2 every STEPS_PER_HALVING)
+        for (let boost = 0; budget && e.headBytes > budget && boost < MAX_BOOST[ck]; ) {
+          boost = Math.min(MAX_BOOST[ck], boost + Math.max(2, Math.ceil(STEPS_PER_HALVING[ck] * Math.log2(e.headBytes / budget)) + 1))
+          e = await encodeVariant(rk, ck, boost)
+        }
         if (ck === 'avc') {
           // progressive fallback: same encode, moov up front
           const full = join(work, `${rk}-avc.full.mp4`)
-          await run(ffmpeg, ['-y', '-v', 'error', '-i', f, '-c', 'copy', '-movflags', '+faststart', full])
+          await run(ffmpeg, ['-y', '-v', 'error', '-i', e.file, '-c', 'copy', '-movflags', '+faststart', full])
           e._full = await readFile(full)
           e.fullBytes = e._full.length
-          if (rk === 'm') posterFrom = f
+          if (rk === 'm') posterFrom = e.file
         }
         r[rk][ck] = e
       }
@@ -212,7 +236,7 @@ export async function encodeClip(input: string, opts: EncodeOptions = {}): Promi
           tail: add(`${rk}-${ck}-${hash(e._tail)}.tail.m4s`, e._tail, 'video/mp4'),
           ...(e._full ? { full: add(`${rk}-${ck}-${hash(e._full)}.full.mp4`, e._full, 'video/mp4') } : {}),
         }
-        sizes.r[rk][ck] = { head: e.headBytes, tail: e.tailBytes, full: e.fullBytes ?? null, codec: e.codec }
+        sizes.r[rk][ck] = { head: e.headBytes, tail: e.tailBytes, full: e.fullBytes ?? null, codec: e.codec, boost: e.boost }
       }
     }
 

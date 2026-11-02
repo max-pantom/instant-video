@@ -8,31 +8,8 @@ instant-video does all of that **before** the pointer arrives, so the hover only
 
 ## Numbers
 
-Hover latency measured on the live Museum of Ads site (the library's first user): Chromium 156, 1440×900, no
-throttling, 24 hovers per scenario on distinct cards, median / p95 in ms from pointer-enter, 51 clips.
-*Visible* = the video is on screen; *playing* = the `playing` event. Reproduce with `scripts/bench.mjs` in
-[museum-of-ads](https://github.com/max-pantom/museum-of-ads).
-
-| scenario | engine | visible | playing |
-|---|---|---|---|
-| cold, predicted pointer | plain `<video>` preview | 200 / 249 | 152 / 186 |
-| cold, predicted pointer | **instant-video** | **33 / 35** | **20 / 22** |
-| cold, teleport onto the card | plain `<video>` preview | 203 / 251 | 146 / 187 |
-| cold, teleport onto the card | **instant-video** | **29 / 40** | **20 / 29** |
-| warm (cached), teleport | plain `<video>` preview | 80 / 105 | 26 / 34 |
-| warm (cached), teleport | **instant-video** | **26 / 32** | **17 / 27** |
-| cold, teleport, *idle prefetch off* | **instant-video** | 147 / 596 | 144 / 591 |
-
-A hover reaches `playing` in about 20 ms and the clip is on screen (frame 0, identical to the poster) in about 33 ms.
-The first *new* frame lands at about 50 ms, which is the floor for a 25 fps clip, not a loading cost. The last row is the
-honest caveat: without the idle head prefetch and pointer prediction, a cold hover is no faster than a plain video
-(median 144 vs 146 ms to `playing`) and has a worse tail. The win comes from having bytes and a decoded frame 0 before
-the pointer arrives, not from the container format alone.
-
-Sizes (51 clips, median): head 360p H.264 39 KB / AV1 26 KB, 240p H.264 14 KB; tail 360p H.264 286 KB; poster AVIF 5.5 KB.
-
-Caveats: local machine to a CDN is a fast path; one browser engine (Chromium); no CPU or network throttling; real devices
-and Safari/iOS were not benchmarked.
+Run `npm run demo` for a live, side-by-side native `<video>` versus instant-video benchmark. It measures each hover in
+your browser and includes the scrub-on-hover gallery and current encoded head sizes.
 
 ## Install
 
@@ -61,6 +38,9 @@ and `yt-dlp` are optional.
   el.addEventListener('playing', () => console.log('playing'))
   card.onpointerenter = () => (el.warmed = el.active = true)       // play; `warmed` alone gets ready without playing
   card.onpointerleave = () => (el.active = false)                  // pause, rewind, fade back to the poster
+
+  // Optional thumbnail-style scrubbing instead of looping playback:
+  el.mode = 'scrub'                         // horizontal pointer position → clip time
 </script>
 ```
 
@@ -75,7 +55,7 @@ import { InstantVideo } from 'instant-video/react'
 
 <div className="card" data-iv-target style={{ position: 'relative' }}>
   <img src={clip.poster.jpg} alt="" />
-  <InstantVideo source={clip} active={hovering} warm={intent} />
+  <InstantVideo source={clip} active={hovering} warm={intent} mode="scrub" />
 </div>
 ```
 
@@ -97,13 +77,16 @@ configure({
 ## Encoding
 
 ```sh
+npx instant-video encode ./clips                                                # every video in the folder
 npx instant-video encode ./clip.mp4 --id my-clip --out ./public/media --base-url /media
 npx instant-video encode https://www.youtube.com/watch?v=… --id spot     # URLs go through yt-dlp
 npx instant-video encode a.mp4 b.mp4 --storage blob                      # Vercel Blob
 npx instant-video encode a.mp4 --storage s3 --bucket my-bucket --region eu-west-1 --public-url https://cdn.example.com
 ```
 
-Each input produces `<out>/<id>.json` (the manifest you pass as `source`) and the media files. Per clip:
+The default command writes a static `./instant-video-out` folder: one `<id>.json` manifest per clip, an `index.json`
+listing every encoded id, and content-addressed media. Upload that folder to any static host—Blob and S3 are optional.
+Folder inputs are scanned recursively for common video formats. Per clip:
 
 - 360p (`m`) and 240p (`s`) renditions in H.264 (Main, no B-frames) and AV1, 7 s, 25 fps, a keyframe every 12 frames
   (0.48 s), CMAF-style fragmented MP4.
@@ -113,7 +96,9 @@ Each input produces `<out>/<id>.json` (the manifest you pass as `source`) and th
   black openings (`--no-skip-black` to keep the start).
 - File names are content-addressed, so everything can be cached forever.
 
-Options: `--start <s>`, `--duration <s>`, `--head <s>`, `--prefix`, `--endpoint`. `instant-video --help` lists all.
+Options: `--start <s>`, `--duration <s>`, `--head <s>`, `--head-kb <kb>`, `--prefix`, `--endpoint`.
+`instant-video --help` lists all. The default 40 KB head budget raises CRF only as far as a conservative quality cap;
+`--head-kb 0` disables budgeting.
 
 ### Storage
 

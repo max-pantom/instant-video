@@ -20,6 +20,7 @@ export class Player {
   private dead = false
   private started = false
   private onData?: () => void
+  private pendingSeek?: number
 
   constructor(
     host: ParentNode,
@@ -37,6 +38,8 @@ export class Player {
     v.addEventListener('error', () => this.fallback('video error ' + (v.error?.code ?? '') + ' ' + (v.error?.message ?? '')))
     // media events do not cross the shadow boundary: re-emit `playing` on the <instant-video> element
     v.addEventListener('playing', () => (host as ShadowRoot).host?.dispatchEvent(new Event('playing')))
+    v.addEventListener('loadedmetadata', () => this.applySeek())
+    v.addEventListener('progress', () => this.applySeek())
     host.appendChild(v)
   }
 
@@ -77,6 +80,7 @@ export class Player {
     const sb = this.sb
     const ms = this.ms
     if (!sb || !ms || !this.headIn || this.dead || sb.updating || ms.readyState !== 'open') return
+    this.applySeek()
     const b = this.q.shift()
     if (b) {
       try {
@@ -148,11 +152,52 @@ export class Player {
     v.play().catch(() => {})
   }
 
+  /** Show a paused frame at `progress` (0–1). The tail is fetched on the first scrub. */
+  scrub(progress: number): void {
+    if (this.dead) return
+    this.start()
+    if (this.tail === 0) {
+      this.tail = 1
+      this.fetchTail()
+    }
+    this.playing = false
+    this.video.pause()
+    this.pendingSeek = Math.min(1, Math.max(0, progress)) * Math.max(0, this.pk.r.dur - 1 / 60)
+    this.showWhenReady()
+    this.applySeek()
+  }
+
+  private showWhenReady() {
+    const v = this.video
+    if (v.readyState >= 2) v.classList.add('on')
+    else if (!this.onData) {
+      this.onData = () => {
+        this.onData = undefined
+        v.classList.add('on')
+        this.applySeek()
+      }
+      v.addEventListener('loadeddata', this.onData, { once: true })
+    }
+  }
+
+  private applySeek() {
+    if (this.pendingSeek === undefined || this.video.readyState < 1) return
+    const t = this.pendingSeek
+    // Seeking beyond the currently appended head is safe: the MediaSource tail is already in flight.
+    // Re-apply on progress so rapid pointer moves settle on the newest requested frame.
+    try {
+      if (Math.abs(this.video.currentTime - t) > 1 / 120) this.video.currentTime = t
+    } catch {
+      return
+    }
+  }
+
   stop() {
     this.playing = false
     const v = this.video
     if (this.onData) v.removeEventListener('loadeddata', this.onData)
     this.onData = undefined
+    this.pendingSeek = undefined
     v.classList.remove('on')
     v.pause()
     if (v.readyState >= 1 && v.currentTime > 0) v.currentTime = 0
