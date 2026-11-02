@@ -15,6 +15,8 @@ export class Player {
   private url = ''
   private q: ArrayBuffer[] = []
   private tail: 0 | 1 | 2 | 3 = 0 // not wanted, wanted, fetching, queued
+  private headIn = false // init+head must be the first thing appended, whatever arrives first
+  private playing = false
   private dead = false
   private started = false
   private onData?: () => void
@@ -32,7 +34,7 @@ export class Player {
     v.disablePictureInPicture = true
     v.disableRemotePlayback = true
     v.setAttribute('aria-hidden', 'true')
-    v.addEventListener('error', () => this.fallback())
+    v.addEventListener('error', () => this.fallback('video error ' + (v.error?.code ?? '') + ' ' + (v.error?.message ?? '')))
     host.appendChild(v)
   }
 
@@ -56,12 +58,13 @@ export class Player {
             .then((b) => {
               if (this.sb !== sb) return
               this.q.unshift(b)
+              this.headIn = true
               this.pump()
             })
-            .catch(() => this.fallback())
+            .catch((e) => this.fallback('head ' + e))
           this.fetchTail()
-        } catch {
-          this.fallback()
+        } catch (e) {
+          this.fallback('setup ' + e)
         }
       },
       { once: true },
@@ -71,13 +74,13 @@ export class Player {
   private pump() {
     const sb = this.sb
     const ms = this.ms
-    if (!sb || !ms || this.dead || sb.updating || ms.readyState !== 'open') return
+    if (!sb || !ms || !this.headIn || this.dead || sb.updating || ms.readyState !== 'open') return
     const b = this.q.shift()
     if (b) {
       try {
         sb.appendBuffer(b)
-      } catch {
-        this.fallback()
+      } catch (e) {
+        this.fallback('append ' + e)
       }
     } else if (this.tail === 3) {
       try {
@@ -100,7 +103,7 @@ export class Player {
         this.q.push(b)
         this.pump()
       })
-      .catch(() => this.fallback())
+      .catch((e) => this.fallback('tail ' + e))
   }
 
   private progressive() {
@@ -111,15 +114,18 @@ export class Player {
   }
 
   /** MSE failed: drop to the progressive file once. */
-  private fallback() {
+  private fallback(why = '') {
     if (this.dead || !this.pk.mse || !this.pk.r.full) return
+    console.debug('[instant-video] MSE failed, using progressive file:', why)
     this.q = []
     this.sb = undefined
     this.ms = undefined
     if (this.url) URL.revokeObjectURL(this.url)
     this.url = ''
+    this.headIn = false
     this.pk = { ...this.pk, mse: false }
     this.progressive()
+    if (this.playing) this.video.play().catch(() => {})
   }
 
   /** Show the video (instantly when frame 0 is already decoded) and play. */
@@ -130,6 +136,7 @@ export class Player {
       this.tail = 1
       this.fetchTail()
     }
+    this.playing = true
     const v = this.video
     if (v.readyState >= 2) v.classList.add('on')
     else {
@@ -140,6 +147,7 @@ export class Player {
   }
 
   stop() {
+    this.playing = false
     const v = this.video
     if (this.onData) v.removeEventListener('loadeddata', this.onData)
     this.onData = undefined
