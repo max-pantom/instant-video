@@ -37,10 +37,11 @@ and `yt-dlp` are optional.
   el.source = await (await fetch('/media/my-clip.json')).json()   // the manifest written by the encoder
   el.addEventListener('playing', () => console.log('playing'))
   card.onpointerenter = () => (el.warmed = el.active = true)       // play; `warmed` alone gets ready without playing
-  card.onpointerleave = () => (el.active = false)                  // pause, rewind, fade back to the poster
-
-  // Optional thumbnail-style scrubbing instead of looping playback:
-  el.mode = 'scrub'                         // horizontal pointer position → clip time
+  card.onpointerleave = () => el.mode === 'preview' && (el.active = false)
+  card.onclick = () => {                    // promote the same decoded preview; it does not restart
+    el.controls = true
+    el.mode = 'player'
+  }
 </script>
 ```
 
@@ -55,9 +56,72 @@ import { InstantVideo } from 'instant-video/react'
 
 <div className="card" data-iv-target style={{ position: 'relative' }}>
   <img src={clip.poster.jpg} alt="" />
-  <InstantVideo source={clip} active={hovering} warm={intent} mode="scrub" />
+  <InstantVideo source={clip} active={hovering} warm={intent} mode="preview" />
 </div>
 ```
+
+## Full player
+
+`mode="player"` promotes the existing preview engine into the built-in player. A playing preview keeps its current
+time and decoded frame while the selected full rendition is prepared, then swaps on the next aligned keyframe. The
+player is HLS-free, has no browser runtime dependencies, and falls back to progressive H.264 when fMP4/MSE playback
+is unavailable.
+
+### HTML
+
+```html
+<div class="video-shell" data-iv-target style="position:relative;aspect-ratio:16/9">
+  <img src="poster.jpg" alt="Demo reel">
+  <instant-video controls muted title="Demo reel">
+    <track kind="captions" srclang="en" label="English" src="/captions/demo.vtt">
+  </instant-video>
+</div>
+
+<script type="module">
+  import 'instant-video'
+  const player = document.querySelector('instant-video')
+  player.source = await (await fetch('/media/demo.json')).json()
+  player.active = true                        // hover preview
+  player.mode = 'player'                      // same timeline, full controls
+  player.addEventListener('modechange', e => console.log(e.detail.mode))
+  player.addEventListener('qualitychange', e => console.log(e.detail.quality))
+</script>
+```
+
+Boolean attributes/properties are `controls`, `autoplay`, `muted`, `loop`, and opt-in `download`. Other player
+properties are `mode` (`preview | player`), `startAt`, `poster`, and `title`. The control bar includes play/pause,
+buffered scrubber with sprite thumbnails, time, volume, speed, Auto/360/720/1080 quality, loop, captions,
+picture-in-picture, fullscreen, and optional download. Theme it with `--iv-accent`, `--iv-fg`, `--iv-bg`,
+`--iv-radius`, and `--iv-font`.
+
+### React
+
+```tsx
+import { useState } from 'react'
+import { InstantVideo } from 'instant-video/react'
+
+const [mode, setMode] = useState<'preview' | 'player'>('preview')
+
+<div onClick={() => setMode('player')} style={{ position: 'relative', aspectRatio: '16 / 9' }}>
+  <InstantVideo
+    source={clip}
+    active={hovering}
+    warm={intent}
+    mode={mode}
+    controls
+    muted
+    startAt={0}
+    poster={clip.poster.jpg}
+    title="Demo reel"
+    onModeChange={setMode}
+  >
+    <track kind="captions" src="/captions/demo.vtt" srcLang="en" label="English" />
+  </InstantVideo>
+</div>
+```
+
+The element re-emits `play`, `pause`, `timeupdate`, `ended`, `modechange`, `qualitychange`, and `error`. It emits
+`iv-close` after a downward touch swipe when nested in a `dialog`, `[role=dialog]`, or `[data-iv-sheet]`.
 
 ### Config
 
@@ -79,6 +143,7 @@ configure({
 ```sh
 npx instant-video encode ./clips                                                # every video in the folder
 npx instant-video encode ./clip.mp4 --id my-clip --out ./public/media --base-url /media
+npx instant-video encode ./clip.mp4 --full 720,1080                         # add full-player H.264 + AV1
 npx instant-video encode https://www.youtube.com/watch?v=… --id spot     # URLs go through yt-dlp
 npx instant-video encode a.mp4 b.mp4 --storage blob                      # Vercel Blob
 npx instant-video encode a.mp4 --storage s3 --bucket my-bucket --region eu-west-1 --public-url https://cdn.example.com
@@ -94,6 +159,8 @@ Folder inputs are scanned recursively for common video formats. Per clip:
   (the rest). H.264 also gets a faststart progressive `full` file for the fallback.
 - A poster (AVIF, WebP, JPEG) that is frame 0 of the 360p H.264 file, at the clip's pixel size. The clip is moved off
   black openings (`--no-skip-black` to keep the start).
+- With `--full 720,1080`, optional high-quality H.264 and AV1 fMP4 player renditions, progressive H.264 fallbacks,
+  and a JPEG contact-sheet sprite used for scrub thumbnails.
 - File names are content-addressed, so everything can be cached forever.
 
 Options: `--start <s>`, `--duration <s>`, `--head <s>`, `--head-kb <kb>`, `--prefix`, `--endpoint`.
