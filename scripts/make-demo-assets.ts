@@ -1,10 +1,10 @@
 // Regenerates demo/assets from synthetic ffmpeg test patterns (no third-party footage), using the built CLI.
-//   npm run build && node scripts/make-demo-assets.mjs
+//   npm run build && node --experimental-strip-types scripts/make-demo-assets.ts
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const sources = {
+const sources: Record<string, string> = {
   bars: 'smptehdbars=size=640x360:rate=25',
   rgb: 'rgbtestsrc=size=640x360:rate=25',
   test: 'testsrc2=size=640x360:rate=25',
@@ -13,8 +13,8 @@ const sources = {
 const tmp = 'demo/.src'
 rmSync('demo/assets', { recursive: true, force: true })
 mkdirSync(tmp, { recursive: true })
-const ids = []
-const files = []
+const ids: string[] = []
+const files: string[] = []
 for (const [id, lavfi] of Object.entries(sources)) {
   const file = join(tmp, `${id}.mp4`)
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', lavfi, '-t', '7', '-pix_fmt', 'yuv420p', file])

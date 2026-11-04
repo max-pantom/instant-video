@@ -70,41 +70,6 @@
   <section><div class="section-head"><div><div class="eyebrow">Scrub mode</div><h2>The whole clip under your cursor.</h2></div><p class="section-copy">Move sideways across a card to seek through it, like a video thumbnail. No click, controls, or timeline required.</p></div><div class="gallery" id="gallery"></div></section>
   <footer><span>instant-video</span><span>Built for feeds, galleries, and archives.</span></footer>
 </div>
-<script type="module">
-  import { configure } from '../dist/index.js'
-  configure({ predict:true, prefetch:true })
-  const ids = await (await fetch('assets/index.json')).json()
-  const clips = await Promise.all(ids.map(async id => [id, await (await fetch(`assets/${id}.json`)).json()]))
-  const [, bench] = clips.find(([id]) => id === 'test') || clips[0]
-  const oldCard = document.querySelector('#old-card'), oldVideo = document.querySelector('#old-video')
-  const newCard = document.querySelector('#new-card'), newVideo = document.querySelector('#new-video')
-  document.querySelector('#old-poster').src = bench.poster.jpg
-  document.querySelector('#new-poster').src = bench.poster.jpg
-  oldVideo.src = bench.r.m.avc.full
-  newVideo.source = bench
-  newVideo.warmed = true
-  document.querySelector('#head-size').textContent = `${Math.round(bench.r.m.avc.headBytes / 1024)} KB`
-  const samples = { old:[], new:[] }
-  const median = values => { if (!values.length) return '—'; const sorted = [...values].sort((a,b) => a-b); return `${sorted[Math.floor(sorted.length/2)]} ms` }
-  function record(kind,start) { const ms = Math.round(performance.now()-start); samples[kind].push(ms); document.querySelector(`#${kind}-last`).textContent = `${ms} ms`; document.querySelector(`#${kind}-median`).textContent = median(samples[kind]) }
-  let oldStart = 0
-  oldCard.addEventListener('pointerenter', () => { oldStart=performance.now(); oldCard.classList.add('is-active'); oldVideo.currentTime=0; oldVideo.play().catch(() => {}) })
-  oldCard.addEventListener('pointerleave', () => { oldCard.classList.remove('is-active'); oldVideo.pause(); oldVideo.currentTime=0 })
-  oldVideo.addEventListener('playing', () => record('old',oldStart))
-  let newStart = 0
-  newCard.addEventListener('pointerenter', () => { newStart=performance.now(); newCard.classList.add('is-active'); newVideo.active=true })
-  newCard.addEventListener('pointerleave', () => { newCard.classList.remove('is-active'); newVideo.active=false })
-  newVideo.addEventListener('playing', () => record('new',newStart))
-  const gallery = document.querySelector('#gallery')
-  for (const [id,clip] of clips.slice(0,3)) {
-    const card = document.createElement('div'); card.className='scrub-card'; card.dataset.ivTarget=''
-    card.innerHTML = `<img src="${clip.poster.jpg}" alt=""><div class="scrub-label"><span>${id}</span><span>SCRUB ↔</span></div><div class="scrub-line"><i></i></div>`
-    const video = document.createElement('instant-video'); video.source=clip; video.mode='scrub'; card.prepend(video)
-    card.addEventListener('pointerenter', () => { video.warmed=true; video.active=true })
-    card.addEventListener('pointerleave', () => { video.active=false; card.querySelector('i').style.width='0' })
-    card.addEventListener('pointermove', event => { const r=card.getBoundingClientRect(); card.querySelector('i').style.width=`${Math.max(0,Math.min(1,(event.clientX-r.left)/r.width))*100}%` }, { passive:true })
-    gallery.append(card)
-  }
-</script>
+<script type="module" src="./main.js"></script>
 </body>
 </html>
