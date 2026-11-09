@@ -9,7 +9,7 @@
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
   "include": ["src", "test", "demo/main.ts", "demo/vite.config.ts", "scripts/make-demo-assets.ts", "site/scripts/sync.ts", "tsup.config.ts"]
 }

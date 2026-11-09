@@ -23,6 +23,22 @@ describe('ranged preview cache', () => {
     expect([...new Uint8Array(await tail('https://media.example/b.mp4', 2))]).toEqual([2, 3, 4])
   })
 
+  it('retries with a range-specific URL when a CDN serves the wrong cached range', async () => {
+    const urls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(url)
+      if (urls.length === 1) {
+        return new Response(new Uint8Array([0, 1]), { status: 206, headers: { 'Content-Range': 'bytes 0-1/100' } })
+      }
+      return new Response(new Uint8Array([0, 1, 2, 3]), { status: 206, headers: { 'Content-Range': 'bytes 0-3/100' } })
+    }))
+    expect([...new Uint8Array(await head('https://media.example/poisoned.mp4', 3))]).toEqual([0, 1, 2, 3])
+    expect(urls).toEqual([
+      'https://media.example/poisoned.mp4',
+      'https://media.example/poisoned.mp4?__iv_range=0-3',
+    ])
+  })
+
   it('caps speculative viewport requests at the configured budget', async () => {
     config.prefetch = 2
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))

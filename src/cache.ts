@@ -10,11 +10,37 @@ let running = 0
 
 const keyOf = (url: string, end?: number) => `${url}#0-${end ?? ''}`
 
+const matchesRange = (response: Response, start: number, end?: number) => {
+  const value = response.headers.get('content-range')
+  if (!value) return true
+  const match = /^bytes (\d+)-(\d+)\/(?:\d+|\*)$/i.exec(value)
+  if (!match || Number(match[1]) !== start) return false
+  return end === undefined || Number(match[2]) === end
+}
+
+// Some CDNs cache a 206 response by URL without varying on Range. Give a mismatched cached
+// response a range-specific URL so its head and tail cannot poison one another.
+const rangeRetryUrl = (url: string, start: number, end?: number) => {
+  const hashAt = url.indexOf('#')
+  const base = hashAt < 0 ? url : url.slice(0, hashAt)
+  const hash = hashAt < 0 ? '' : url.slice(hashAt)
+  const separator = base.includes('?') ? '&' : '?'
+  return `${base}${separator}__iv_range=${encodeURIComponent(`${start}-${end ?? ''}`)}${hash}`
+}
+
 async function get(url: string, priority: Priority, start?: number, end?: number): Promise<ArrayBuffer> {
   const ranged = start !== undefined || end !== undefined
-  const headers = ranged ? { Range: `bytes=${start ?? 0}-${end ?? ''}` } : undefined
-  const response = await fetch(url, { priority, credentials: 'omit', headers } as RequestInit)
+  const first = start ?? 0
+  const headers = ranged ? { Range: `bytes=${first}-${end ?? ''}` } : undefined
+  const request = (target: string) => fetch(target, { priority, credentials: 'omit', headers } as RequestInit)
+  let response = await request(url)
+  if (ranged && response.status === 206 && !matchesRange(response, first, end)) {
+    response = await request(rangeRetryUrl(url, first, end))
+  }
   if (!response.ok) throw new Error(`${response.status} ${url}`)
+  if (ranged && response.status === 206 && !matchesRange(response, first, end)) {
+    throw new Error(`wrong byte range for ${url}`)
+  }
   const data = await response.arrayBuffer()
   // A static host may ignore Range and return 200. Preserve correctness without a second compatibility path.
   if (ranged && response.status === 200) return data.slice(start ?? 0, end === undefined ? undefined : end + 1)
