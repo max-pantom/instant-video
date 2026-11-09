@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#161816"/>
+      <stop offset="0.58" stop-color="#090a09"/>
+      <stop offset="1" stop-color="#111511"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#262a27"/>
+      <stop offset="1" stop-color="#111312"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1030" cy="80" r="180" fill="#c8ff3d" opacity=".08" filter="url(#glow)"/>
+  <path d="M0 538C245 487 420 566 660 518s377-33 540-6v118H0z" fill="#c8ff3d" opacity=".035"/>
+
+  <g transform="translate(76 70)">
+    <g fill="#c8ff3d">
+      <rect x="0" y="0" width="11" height="30" rx="5.5" opacity=".35"/>
+      <rect x="18" y="0" width="11" height="30" rx="5.5" opacity=".58"/>
+      <rect x="36" y="0" width="11" height="30" rx="5.5" opacity=".78"/>
+      <rect x="54" y="0" width="11" height="30" rx="5.5"/>
+    </g>
+    <text x="82" y="25" fill="#f4f5f1" font-family="Geist, Inter, Arial, sans-serif" font-size="25" font-weight="650" letter-spacing="-.5">instant-video</text>
+  </g>
+
+  <text x="76" y="236" fill="#f4f5f1" font-family="Geist, Inter, Arial, sans-serif" font-size="76" font-weight="650" letter-spacing="-4.2">Video that starts</text>
+  <text x="76" y="322" fill="#c8ff3d" font-family="Geist, Inter, Arial, sans-serif" font-size="82" font-weight="700" letter-spacing="-4.8">in ~20 ms.</text>
+  <text x="80" y="388" fill="#a6aaa3" font-family="Geist, Inter, Arial, sans-serif" font-size="24" letter-spacing="-.4">Decoded before the pointer arrives.</text>
+
+  <g transform="translate(702 142)">
+    <rect width="420" height="330" rx="24" fill="#090a09" stroke="#353a35"/>
+    <rect x="1" y="1" width="418" height="48" rx="23" fill="#171917"/>
+    <circle cx="24" cy="25" r="5" fill="#585d58"/>
+    <circle cx="42" cy="25" r="5" fill="#585d58"/>
+    <circle cx="60" cy="25" r="5" fill="#585d58"/>
+    <rect x="92" y="17" width="184" height="16" rx="8" fill="#272b28"/>
+    <rect x="20" y="70" width="184" height="160" rx="14" fill="url(#screen)" stroke="#4c544d"/>
+    <rect x="216" y="70" width="184" height="160" rx="14" fill="#141615" stroke="#252825"/>
+    <path d="M20 168l52-48 36 29 36-43 60 61v49a14 14 0 0 1-14 14H34a14 14 0 0 1-14-14z" fill="#c8ff3d" opacity=".18"/>
+    <circle cx="155" cy="112" r="22" fill="#c8ff3d" opacity=".82"/>
+    <path d="M149 101l17 11-17 11z" fill="#101210"/>
+    <rect x="20" y="247" width="380" height="62" rx="16" fill="#171a18" stroke="#303530"/>
+    <circle cx="52" cy="278" r="13" fill="#c8ff3d"/>
+    <path d="M49 271l10 7-10 7z" fill="#121412"/>
+    <rect x="80" y="273" width="210" height="10" rx="5" fill="#3a3f3b"/>
+    <rect x="80" y="273" width="136" height="10" rx="5" fill="#c8ff3d"/>
+    <text x="314" y="284" fill="#b7bbb5" font-family="Geist Mono, monospace" font-size="16">00:01</text>
+  </g>
+
+  <g transform="translate(78 512)">
+    <rect width="272" height="46" rx="23" fill="#1a1d1a" stroke="#383d38"/>
+    <circle cx="24" cy="23" r="5" fill="#c8ff3d"/>
+    <text x="40" y="29" fill="#d8dbd5" font-family="Geist Mono, monospace" font-size="16">zero runtime dependencies</text>
+  </g>
+  <text x="1122" y="556" text-anchor="end" fill="#777c76" font-family="Geist Mono, monospace" font-size="16">&lt;instant-video&gt;</text>
+</svg>
