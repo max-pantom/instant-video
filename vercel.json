@@ -1,6 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install && npm --prefix site install",
-  "buildCommand": "npm --prefix site run build",
-  "outputDirectory": "build"
+  "installCommand": "npm install",
+  "buildCommand": "npm run build && npm run demo:build",
+  "outputDirectory": "demo/dist",
+  "trailingSlash": true,
+  "rewrites": [
+    { "source": "/IV", "destination": "/index.html" },
+    { "source": "/IV/", "destination": "/index.html" },
+    { "source": "/IV/:path*", "destination": "/:path*" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*).mp4",
+      "headers": [
+        { "key": "Accept-Ranges", "value": "bytes" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
 }

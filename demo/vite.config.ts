@@ -59,6 +59,8 @@ function demoAssets(): Plugin {
 export default defineConfig({
   root,
   publicDir: 'public',
+  // Production lives at primitive8.cc/IV/. Local `npm run demo` stays at /.
+  base: process.env.IV_BASE || (process.env.VERCEL ? '/IV/' : '/'),
   plugins: [demoAssets()],
   server: { port: 4321, strictPort: true, fs: { allow: [repoRoot] } },
   preview: { port: 4321, strictPort: true },

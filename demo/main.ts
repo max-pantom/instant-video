@@ -59,14 +59,43 @@ async function setupStage() {
 
   // L'Arroseur arrosé (Lumière, 1895): public domain, the first prank on film
   let clip: InstantSource
+  const base = import.meta.env.BASE_URL
+  const abs = (url?: string) => {
+    if (!url || /^(https?:)?\/\//.test(url) || url.startsWith('/')) return url
+    return base + url
+  }
   try {
-    const res = await fetch('assets/gardener.json')
+    const res = await fetch(`${base}assets/gardener.json`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     clip = (await res.json()) as InstantSource
   } catch {
     hint.textContent = 'The demo clip could not load.'
     stage.classList.add('is-still')
     return
+  }
+  for (const size of Object.values(clip.r ?? {})) {
+    for (const rendition of Object.values(size ?? {})) {
+      if (!rendition) continue
+      if (rendition.src) rendition.src = abs(rendition.src) ?? rendition.src
+      if (rendition.head) rendition.head = abs(rendition.head) ?? rendition.head
+      if (rendition.tail) rendition.tail = abs(rendition.tail) ?? rendition.tail
+      if (rendition.full) rendition.full = abs(rendition.full) ?? rendition.full
+    }
+  }
+  if (clip.poster) {
+    if (clip.poster.jpg) clip.poster.jpg = abs(clip.poster.jpg) ?? clip.poster.jpg
+    if (clip.poster.webp) clip.poster.webp = abs(clip.poster.webp) ?? clip.poster.webp
+    if (clip.poster.avif) clip.poster.avif = abs(clip.poster.avif) ?? clip.poster.avif
+  }
+  if (clip.full) {
+    if (clip.full.sprite?.src) clip.full.sprite.src = abs(clip.full.sprite.src) ?? clip.full.sprite.src
+    for (const size of Object.values(clip.full.r ?? {})) {
+      for (const rendition of Object.values(size ?? {})) {
+        if (!rendition) continue
+        rendition.src = abs(rendition.src) ?? rendition.src
+        if (rendition.fallback) rendition.fallback = abs(rendition.fallback) ?? rendition.fallback
+      }
+    }
   }
   poster.src = clip.poster?.jpg ?? poster.src
   video.source = clip
