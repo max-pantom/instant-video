@@ -8,4 +8,5 @@ playwright-report
 .env*
 work
 .vercel
-demo/main.js
+demo/dist
+demo/.src

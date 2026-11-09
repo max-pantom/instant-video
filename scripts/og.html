@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..500&display=swap">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; background: #010101; }
+  body {
+    box-sizing: border-box;
+    font-family: Inter, system-ui, sans-serif;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .nav {
+    position: absolute;
+    top: 40px;
+    left: 48px;
+    right: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 500; line-height: 24px; letter-spacing: -.02em; }
+  .brand svg { display: block; }
+  .pills { display: flex; align-items: center; gap: 12px; }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 14px 0 12px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+    white-space: nowrap;
+  }
+  .copy { background: #2c2c2c; color: #d9d9d9; box-shadow: 0 0 0 0.5px #4a4a4a, 0 1px 2px rgba(0,0,0,.5); }
+  .copy code { font: 400 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.01em; }
+  .star { background: #fff; color: #000; box-shadow: 0 0 0 0.5px #fff, 0 1px 2px rgba(0,0,0,.5); }
+  h1 { margin: 0; font-size: 42px; font-weight: 500; line-height: 52px; letter-spacing: -.02em; }
+  p { margin: 16px 0 0; width: 520px; text-align: center; font-size: 20px; line-height: 24px; font-weight: 400; color: #fff; opacity: .6; }
+</style>
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#010101"/>
+        <rect width="32" height="32" rx="8" fill="none" stroke="#2c2c2c" stroke-width="1"/>
+        <g transform="translate(6 6)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7.25 6.076A1 1 0 0 1 8.788 5.233L14.931 9.157A1 1 0 0 1 14.931 10.843L8.788 14.767A1 1 0 0 1 7.25 13.924Z"/>
+        </g>
+      </svg>
+      instant-video
+    </div>
+    <div class="pills">
+      <div class="pill copy">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#dadada" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7.25 4.25C7.25 3.083 7.833 2.5 9 2.5L15.75 2.5C16.917 2.5 17.5 3.083 17.5 4.25L17.5 11C17.5 12.167 16.917 12.75 15.75 12.75"/>
+          <rect x="2.75" y="6.75" width="10.5" height="10.5" rx="3.25"/>
+        </svg>
+        <code>npm i github:max-pantom/instant-video</code>
+      </div>
+      <div class="pill star">Star on GitHub</div>
+    </div>
+  </div>
+  <h1>Introducing instant-video</h1>
+  <p>An open-source hover player for the web, with the first frame decoded before the pointer arrives, scrubbing as you move across the thumbnail, and a click that continues into the full video.</p>
+</body>
+</html>

@@ -63,7 +63,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "demo": "npm run build && esbuild demo/main.ts --outfile=demo/main.js --format=esm && node --experimental-strip-types demo/serve.ts",
+    "demo": "npm run build && vite --config demo/vite.config.ts",
+    "demo:build": "vite build --config demo/vite.config.ts",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
@@ -90,6 +91,7 @@
     "react": "^18.3.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
+    "vite": "^7.3.7",
     "vitest": "^3.2.4"
   }
 }

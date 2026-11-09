@@ -1,98 +1,196 @@
-import { configure, InstantVideoElement, type InstantSource } from '../dist/index.js'
+import { configure, InstantVideoElement, quality, type InstantSource } from '../dist/index.js'
 
 configure({ predict: true, prefetch: true })
 
-const ids = (await fetch('assets/index.json').then((res) => res.json())) as string[]
-const clips = await Promise.all(ids.map(async (id) => {
-  const source = (await fetch(`assets/${id}.json`).then((res) => res.json())) as InstantSource
-  return [id, source] as const
-}))
-
-const bench = clips.find(([id]) => id === 'test')?.[1] ?? clips[0]?.[1]
-const avc = bench?.r.m?.avc
-const oldCard = document.querySelector<HTMLElement>('#old-card')
-const oldVideo = document.querySelector<HTMLVideoElement>('#old-video')
-const newCard = document.querySelector<HTMLElement>('#new-card')
-const newVideo = document.querySelector('#new-video')
-const oldPoster = document.querySelector<HTMLImageElement>('#old-poster')
-const newPoster = document.querySelector<HTMLImageElement>('#new-poster')
-const headSize = document.querySelector('#head-size')
-const gallery = document.querySelector('#gallery')
-
-if (!bench || !avc?.full || !bench.poster?.jpg || !oldCard || !oldVideo || !newCard || !(newVideo instanceof InstantVideoElement) || !oldPoster || !newPoster || !headSize || !gallery) {
-  throw new Error('demo markup or benchmark clip is incomplete')
+// Page chrome first: none of it may wait on the demo clip, which can be slow or missing.
+const status = document.querySelector<HTMLElement>('#status')
+const announce = (message: string) => {
+  if (!status) return
+  status.textContent = ''
+  requestAnimationFrame(() => { status.textContent = message })
 }
 
-oldPoster.src = bench.poster.jpg
-newPoster.src = bench.poster.jpg
-oldVideo.src = avc.full
-newVideo.source = bench
-newVideo.warmed = true
-headSize.textContent = `${Math.round(avc.headBytes / 1024)} KB`
-
-const samples: Record<'old' | 'new', number[]> = { old: [], new: [] }
-const median = (values: number[]) => {
-  if (!values.length) return '—'
-  const sorted = [...values].sort((a, b) => a - b)
-  return `${sorted[Math.floor(sorted.length / 2)]} ms`
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+  // data-copy-from keeps long copy text (the agent prompt) in one place: the element it points at
+  const from = button.dataset.copyFrom ? document.querySelector<HTMLElement>(button.dataset.copyFrom) : null
+  if (from) button.dataset.copy = from.textContent?.trim() ?? ''
+  let reset = 0
+  button.addEventListener('click', async () => {
+    clearTimeout(reset)
+    button.classList.add('copied')
+    try {
+      await navigator.clipboard.writeText(button.dataset.copy ?? '')
+      announce('Copied to clipboard')
+      reset = window.setTimeout(() => button.classList.remove('copied'), 1400)
+    } catch {
+      button.classList.remove('copied')
+      // no clipboard (plain http, denied permission): select the text so a manual copy is one keystroke away
+      const text = from ?? button.querySelector('code')
+      if (text) getSelection()?.selectAllChildren(text)
+      announce('Could not copy. The text is selected, so press Ctrl+C or ⌘C.')
+    }
+  })
 }
-const record = (kind: 'old' | 'new', start: number) => {
-  const ms = Math.round(performance.now() - start)
-  samples[kind].push(ms)
-  const last = document.querySelector(`#${kind}-last`)
-  const mid = document.querySelector(`#${kind}-median`)
-  if (last) last.textContent = `${ms} ms`
-  if (mid) mid.textContent = median(samples[kind])
+
+if ('IntersectionObserver' in window) {
+  document.documentElement.classList.add('js')
+  const reveal = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue
+      entry.target.classList.add('in')
+      reveal.unobserve(entry.target)
+    }
+  }, { rootMargin: '0px 0px -40px 0px' })
+  document.querySelectorAll<HTMLElement>('.item').forEach((item, i) => {
+    item.style.setProperty('--d', `${(i % 4) * 50}ms`)
+    reveal.observe(item)
+  })
 }
 
-let oldStart = 0
-oldCard.addEventListener('pointerenter', () => {
-  oldStart = performance.now()
-  oldCard.classList.add('is-active')
-  oldVideo.currentTime = 0
-  void oldVideo.play().catch(() => {})
-})
-oldCard.addEventListener('pointerleave', () => {
-  oldCard.classList.remove('is-active')
-  oldVideo.pause()
-  oldVideo.currentTime = 0
-})
-oldVideo.addEventListener('playing', () => record('old', oldStart))
+void setupStage()
 
-let newStart = 0
-newCard.addEventListener('pointerenter', () => {
-  newStart = performance.now()
-  newCard.classList.add('is-active')
-  newVideo.active = true
-})
-newCard.addEventListener('pointerleave', () => {
-  newCard.classList.remove('is-active')
-  newVideo.active = false
-})
-newVideo.addEventListener('playing', () => record('new', newStart))
+async function setupStage() {
+  const stage = document.querySelector<HTMLElement>('#stage')
+  const video = document.querySelector('#video')
+  const poster = document.querySelector<HTMLImageElement>('#poster')
+  const fill = document.querySelector<HTMLElement>('#fill')
+  const hint = document.querySelector<HTMLElement>('#hint')
+  if (!stage || !(video instanceof InstantVideoElement) || !poster || !fill || !hint) return
 
-for (const [id, clip] of clips.slice(0, 3)) {
-  const card = document.createElement('div')
-  card.className = 'scrub-card'
-  card.dataset.ivTarget = ''
-  card.innerHTML = `<img src="${clip.poster?.jpg ?? ''}" alt=""><div class="scrub-label"><span>${id}</span><span>SCRUB ↔</span></div><div class="scrub-line"><i></i></div>`
-  const video = document.createElement('instant-video')
-  if (!(video instanceof InstantVideoElement)) throw new Error('instant-video is not registered')
+  // L'Arroseur arrosé (Lumière, 1895): public domain, the first prank on film
+  let clip: InstantSource
+  try {
+    const res = await fetch('assets/gardener.json')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    clip = (await res.json()) as InstantSource
+  } catch {
+    hint.textContent = 'The demo clip could not load.'
+    stage.classList.add('is-still')
+    return
+  }
+  poster.src = clip.poster?.jpg ?? poster.src
   video.source = clip
-  card.prepend(video)
-  const bar = card.querySelector('i')
-  card.addEventListener('pointerenter', () => {
+
+  const label = 'Open the demo clip in the player'
+  stage.classList.add('is-ready')
+  stage.tabIndex = 0
+  stage.setAttribute('role', 'button')
+  stage.setAttribute('aria-label', label)
+
+  // Reduced motion, Save-Data and 2g get the still; a deliberate click or Enter still opens the player.
+  const stills = quality() === 'off'
+  if (stills) {
+    hint.textContent = 'Previews are off (reduced motion or data saver). Click or press Enter to watch.'
+    stage.classList.add('is-still')
+  } else {
     video.warmed = true
+  }
+
+  let opened = false
+  let lastX = 0
+  let resume = 0
+  let frame = 0
+  let restoring = false
+
+  const preview = (on: boolean) => {
+    if (opened || stills) return
+    stage.classList.toggle('is-active', on)
+    video.active = on
+  }
+
+  const open = () => {
+    if (opened) return
+    opened = true
+    clearTimeout(resume)
+    cancelAnimationFrame(frame)
+    frame = 0
+    stage.classList.remove('is-scrubbing')
+    stage.classList.add('is-active', 'is-open')
+    // the player has its own name and controls; a button role around them would hide them from assistive tech
+    stage.removeAttribute('role')
+    stage.removeAttribute('aria-label')
+    stage.tabIndex = -1
+    video.mode = 'player'
     video.active = true
-  })
-  card.addEventListener('pointerleave', () => {
+    video.controls = true
+    video.focus({ preventScroll: true })
+  }
+
+  const close = (returnFocus: boolean) => {
+    clearTimeout(resume)
+    cancelAnimationFrame(frame)
+    frame = 0
+    const wasOpen = opened
+    opened = false
+    video.mode = 'preview'
+    video.controls = false
     video.active = false
-    if (bar instanceof HTMLElement) bar.style.width = '0'
+    stage.classList.remove('is-active', 'is-open', 'is-scrubbing')
+    fill.style.transform = 'scaleX(0)'
+    if (!wasOpen) return
+    stage.setAttribute('role', 'button')
+    stage.setAttribute('aria-label', label)
+    stage.tabIndex = 0
+    // never leave focus inside the now-hidden player
+    if (returnFocus || stage.contains(document.activeElement)) {
+      restoring = true
+      stage.focus({ preventScroll: true })
+      restoring = false
+    }
+  }
+
+  // Mouse and pen: hover plays, sideways movement scrubs, rest resumes. Touch has no hover, so it skips all of this.
+  stage.addEventListener('pointerenter', (event) => {
+    if (event.pointerType === 'touch') return
+    lastX = event.clientX
+    preview(true)
   })
-  card.addEventListener('pointermove', (event) => {
-    const rect = card.getBoundingClientRect()
-    const progress = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
-    if (bar instanceof HTMLElement) bar.style.width = `${progress * 100}%`
+  stage.addEventListener('pointermove', (event) => {
+    if (opened || stills || event.pointerType === 'touch' || Math.abs(event.clientX - lastX) < 2) return
+    lastX = event.clientX
+    if (!frame) frame = requestAnimationFrame(() => {
+      frame = 0
+      if (opened) return
+      const rect = stage.getBoundingClientRect()
+      const progress = Math.max(0, Math.min(1, (lastX - rect.left) / rect.width))
+      stage.classList.add('is-scrubbing')
+      fill.style.transform = `scaleX(${progress})`
+      video.scrub(progress)
+    })
+    clearTimeout(resume)
+    resume = window.setTimeout(() => {
+      if (opened) return
+      stage.classList.remove('is-scrubbing')
+      video.resume()
+    }, 350)
   }, { passive: true })
-  gallery.append(card)
+  stage.addEventListener('pointerleave', (event) => {
+    // on touch, pointerleave fires after every lift, which would close the player under the finger
+    if (event.pointerType !== 'touch') close(false)
+  })
+
+  stage.addEventListener('click', open)
+  stage.addEventListener('keydown', (event) => {
+    if (event.target === stage && !opened && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault()
+      open()
+    } else if (event.key === 'Escape' && opened) {
+      // the player's menus stop Escape themselves, so this only fires once no menu is open
+      event.preventDefault()
+      close(true)
+    }
+  })
+  // keyboard focus previews like hover does; mouse focus is already covered by pointerenter
+  stage.addEventListener('focus', () => { if (!restoring && stage.matches(':focus-visible')) preview(true) })
+  stage.addEventListener('blur', () => { if (!opened && !stage.matches(':hover')) preview(false) })
+  stage.addEventListener('focusout', (event) => {
+    if (opened && !stage.contains(event.relatedTarget as Node | null) && !stage.matches(':hover')) close(false)
+  })
+  // touch has no pointerleave to end a session: tapping elsewhere or scrolling it away does
+  document.addEventListener('pointerdown', (event) => {
+    if (opened && event.pointerType === 'touch' && !stage.contains(event.target as Node)) close(false)
+  }, { passive: true })
+  new IntersectionObserver(([entry]) => {
+    if (opened && entry && !entry.isIntersecting) close(false)
+  }).observe(stage)
 }

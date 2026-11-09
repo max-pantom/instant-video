@@ -1,0 +1,55 @@
+{
+  "v": 3,
+  "dur": 7,
+  "fps": 25,
+  "gop": 12,
+  "w": 480,
+  "h": 360,
+  "r": {
+    "m": {
+      "avc": {
+        "codec": "avc1.4D401F",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 33456,
+        "tailBytes": 830397,
+        "src": "assets/gardener/m-avc-87e10ddd5928.mp4",
+        "full": "assets/gardener/m-avc-64375657b0ac.full.mp4",
+        "fullBytes": 861916
+      },
+      "av1": {
+        "codec": "av01.0.01M.08",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 85650,
+        "tailBytes": 547085,
+        "src": "assets/gardener/m-av1-c56e38a482e6.mp4"
+      }
+    },
+    "s": {
+      "avc": {
+        "codec": "avc1.4D401F",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 39825,
+        "tailBytes": 259132,
+        "src": "assets/gardener/s-avc-3fbcc0d4745a.mp4",
+        "full": "assets/gardener/s-avc-8e67b3f8819c.full.mp4",
+        "fullBytes": 297020
+      },
+      "av1": {
+        "codec": "av01.0.00M.08",
+        "headDur": 0.96,
+        "dur": 7,
+        "headBytes": 40888,
+        "tailBytes": 258821,
+        "src": "assets/gardener/s-av1-7907b30eb349.mp4"
+      }
+    }
+  },
+  "poster": {
+    "jpg": "assets/gardener/p-fe9ed4decd82.jpg",
+    "webp": "assets/gardener/p-137414c99d28.webp",
+    "avif": "assets/gardener/p-2b2cfb30274e.avif"
+  }
+}

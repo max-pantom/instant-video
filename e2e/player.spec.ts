@@ -27,7 +27,8 @@ test('hover preview expands continuously and supports quality and keyboard contr
       ;(window as Window & { __quality?: number }).__quality = (event as CustomEvent<{ quality: number }>).detail.quality
     }, { once: true })
   })
-  await player.locator('select[data-role=quality]').selectOption('1080')
+  await player.locator('[data-menu=quality]').click()
+  await player.locator('[data-role=quality] [data-value="1080"]').click()
   await expect.poll(() => page.evaluate(() => (window as Window & { __quality?: number }).__quality)).toBe(1080)
 
   await player.focus()

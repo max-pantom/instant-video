@@ -240,7 +240,7 @@ npm i
 npm run build        # tsup → dist/ (ESM + .d.ts)
 npm test             # vitest (encoder tests need ffmpeg and skip without it)
 npm run typecheck
-npm run demo         # build, then serve demo/ on http://localhost:4321/demo/
+npm run demo         # build, then the Vite homepage on http://localhost:4321/
 ```
 
 Releasing: `npm publish` runs typecheck, tests and the build first (`prepublishOnly`).

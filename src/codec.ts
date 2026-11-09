@@ -32,9 +32,10 @@ export interface Pick {
   mse: boolean
 }
 
-export function pick(src: InstantSource): Pick | null {
+/** `force` is for an explicit request to watch (player mode): it ignores the posters-only setting, which only governs previews. */
+export function pick(src: InstantSource, force = false): Pick | null {
   const q = quality()
-  if (q === 'off') return null
+  if (q === 'off' && !force) return null
   const sizes: Size[] = q === 's' ? ['s', 'm'] : ['m', 's']
   for (const size of sizes) {
     const set = src.r[size]
