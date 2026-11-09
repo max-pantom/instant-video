@@ -6,20 +6,20 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#010101">
 <title>instant-video — hover video for the web</title>
-<meta name="description" content="An open-source hover player for the web, with the first frame decoded before the pointer arrives, scrubbing as you move across the thumbnail, and a click that continues into the full video.">
+<meta name="description" content="An open-source hover player for the web, with the first frame decoded before the pointer arrives. Hold and drag to scrub, and click to keep watching in the full player.">
 <link rel="canonical" href="https://primitive8.cc/IV/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://primitive8.cc/IV/">
 <meta property="og:site_name" content="instant-video">
 <meta property="og:title" content="Introducing instant-video">
-<meta property="og:description" content="An open-source hover player for the web, with the first frame decoded before the pointer arrives, scrubbing as you move across the thumbnail, and a click that continues into the full video.">
+<meta property="og:description" content="An open-source hover player for the web, with the first frame decoded before the pointer arrives. Hold and drag to scrub, and click to keep watching in the full player.">
 <meta property="og:image" content="https://primitive8.cc/IV/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Introducing instant-video. An open-source hover player for the web.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Introducing instant-video">
-<meta name="twitter:description" content="An open-source hover player for the web, with the first frame decoded before the pointer arrives, scrubbing as you move across the thumbnail, and a click that continues into the full video.">
+<meta name="twitter:description" content="An open-source hover player for the web, with the first frame decoded before the pointer arrives. Hold and drag to scrub, and click to keep watching in the full player.">
 <meta name="twitter:image" content="https://primitive8.cc/IV/og.png">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
@@ -82,9 +82,10 @@
   .sub { margin-top: 16px; max-width: 520px; text-align: center; }
 
   /* The stage is a picture, not a card: no border, just a hairline so its edge stays crisp on near-black. */
-  .stage { position: relative; margin-top: 40px; width: min(915px, 100%); aspect-ratio: 16 / 9; overflow: hidden; background: var(--placeholder); border-radius: var(--radius); isolation: isolate; box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .stage { position: relative; margin-top: 40px; width: min(915px, 100%); aspect-ratio: 16 / 9; overflow: hidden; background: var(--placeholder); border-radius: var(--radius); isolation: isolate; box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
   .stage.is-ready { cursor: pointer; }
-  @media (hover: hover) and (pointer: fine) { .stage.is-ready { cursor: ew-resize; } }
+  .stage.is-holding { cursor: grab; }
+  .stage.is-scrubbing { cursor: ew-resize; }
   .stage.is-open { cursor: default; }
   .stage > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   #video { --iv-radius: var(--radius); }
@@ -166,12 +167,12 @@
 <main id="main">
 <header class="hero">
   <h1>Introducing instant-video</h1>
-  <p class="sub dim">An open-source hover player for the web. With a mouse, the first frame is decoded before the pointer arrives. Move sideways to scrub, and click to keep watching in the full player.</p>
+  <p class="sub dim">An open-source hover player for the web. With a mouse, the first frame is decoded before the pointer arrives. Hold and drag to scrub, and click to keep watching in the full player.</p>
   <div class="stage" id="stage" data-iv-target>
     <img id="poster" src="assets/gardener/p-fe9ed4decd82.jpg" alt="">
     <instant-video id="video"></instant-video>
     <div class="bar"><i id="fill"></i></div>
-    <span class="hint" id="hint"><span class="fine">Hover to play, move sideways to scrub, click to open</span><span class="touch">Tap to open the player</span></span>
+    <span class="hint" id="hint"><span class="fine">Hover to play, hold and drag to scrub, click to open</span><span class="touch">Tap to open the player</span></span>
   </div>
   <p class="note dim"><cite>L’Arroseur arrosé</cite>, Lumière, 1895. Public domain, and the first prank on film. <a href="https://commons.wikimedia.org/wiki/File:Le_Jardinier_(l%27Arroseur_arros%C3%A9)_(1895).webm">Source on Wikimedia Commons</a></p>
 </header>
@@ -182,13 +183,12 @@
   <div class="grid">
     <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.371 3.413A0.35 0.35 0 0 0 10.753 3.151L4.725 10.427A0.35 0.35 0 0 0 4.995 11L8.859 11A0.35 0.35 0 0 1 9.207 11.389L8.629 16.587A0.35 0.35 0 0 0 9.247 16.849L15.275 9.573A0.35 0.35 0 0 0 15.005 9L11.141 9A0.35 0.35 0 0 1 10.793 8.611Z" fill="none" stroke="currentColor" /></svg><b>Decoded early</b><p>Warmed cards are ready before you hover.</p></div>
     <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.107 9.264A0.5 0.5 0 0 1 4.176 8.373L15.65 3.698A0.5 0.5 0 0 1 16.302 4.35L11.627 15.824A0.5 0.5 0 0 1 10.736 15.893L8.314 11.857A0.5 0.5 0 0 0 8.143 11.686Z" fill="none" stroke="currentColor" /></svg><b>Predicts the pointer</b><p>With a mouse, warms the card you’re heading to.</p></div>
-    <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.785 9.627A0.65 0.65 0 0 1 9.627 8.785L15.473 11.059A0.65 0.65 0 0 1 15.42 12.288L13.34 12.9A0.65 0.65 0 0 0 12.9 13.34L12.288 15.42A0.65 0.65 0 0 1 11.059 15.473Z" fill="none" stroke="currentColor" />
-<path d="M8.25 2.25L8.25 4.5M2.25 8.25L4.5 8.25M3.75 3.75L5.25 5.25" fill="none" stroke="currentColor" /></svg><b>Scrubs on hover</b><p>Move sideways through the clip.</p></div>
+    <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.656 17.199L4.5 13.75C3.25 11.25 5.25 10.5 6.75 11.75L7.7 12.7Q8 13 8 12.576L8 9.75C8 7.75 11 7.75 11 9.75L11 10.89Q11 11.25 11.474 10.988C12.921 10.296 13.91 10.847 14.326 11.721Q14.5 12.25 15.269 12.222C16.54 12.327 17.25 13.236 17.25 14.5L17.25 15.25C17.25 17 16 17.75 13.75 17.75L7.65 17.75Q7 17.75 6.656 17.199Z" fill="none" stroke="currentColor" /><path d="M3.5 4.75L11 4.75" fill="none" stroke="currentColor" stroke-dasharray="0 3" /><path d="M14 4.75L17.5 4.75M15.25 2.5L17.04 4.29Q17.5 4.75 17.065 5.233L15.25 7.25" fill="none" stroke="currentColor" /></svg><b>Hold to scrub</b><p>Press and drag through the clip.</p></div>
     <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 6.076A1 1 0 0 1 8.788 5.233L14.931 9.157A1 1 0 0 1 14.931 10.843L8.788 14.767A1 1 0 0 1 7.25 13.924Z" fill="none" stroke="currentColor" /></svg><b>Click to open</b><p>Keeps playing in the full player.</p></div>
     <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.5V11m4 3.5V8m4 6.5V5m4 9.5V9"/><path d="M3 17h14"/></svg><b>40 KB warm-up</b><p>The encoder budgets each video head for fast starts.</p></div>
     <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M3 10h14M10 3c2 2 3 4.3 3 7s-1 5-3 7c-2-2-3-4.3-3-7s1-5 3-7"/></svg><b>Works on any host</b><p>Upload static, content-addressed files anywhere.</p></div>
     <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12"/><circle cx="8" cy="5" r="1.5" fill="#010101"/><circle cx="13" cy="10" r="1.5" fill="#010101"/><circle cx="7" cy="15" r="1.5" fill="#010101"/></svg><b>Adapts to the network</b><p>Slow links get smaller video; data saver gets a poster.</p></div>
-    <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M8 7.25 13 10l-5 2.75zM5 14.5h10"/></svg><b>Full player included</b><p>Quality, captions, PiP and fullscreen. No runtime deps.</p></div>
+    <div class="item"><svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="6.625" fill="none" stroke="currentColor" /><path d="M9.546 7.603L12.704 9.647Q13.25 10 12.704 10.353L9.546 12.397Q9 12.75 9 12.1L9 7.9Q9 7.25 9.546 7.603Z" fill="none" stroke="currentColor" /></svg><b>Full player included</b><p>Quality, captions, PiP and fullscreen. No runtime deps.</p></div>
   </div>
 </section>
 

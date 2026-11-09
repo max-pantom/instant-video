@@ -116,8 +116,11 @@ async function setupStage() {
   }
 
   let opened = false
-  let lastX = 0
-  let resume = 0
+  let holding = false
+  let dragged = false
+  let suppressClick = false
+  let pointerId = -1
+  let downX = 0
   let frame = 0
   let restoring = false
 
@@ -130,10 +133,10 @@ async function setupStage() {
   const open = () => {
     if (opened) return
     opened = true
-    clearTimeout(resume)
+    holding = false
     cancelAnimationFrame(frame)
     frame = 0
-    stage.classList.remove('is-scrubbing')
+    stage.classList.remove('is-holding', 'is-scrubbing')
     stage.classList.add('is-active', 'is-open')
     // the player has its own name and controls; a button role around them would hide them from assistive tech
     stage.removeAttribute('role')
@@ -146,7 +149,7 @@ async function setupStage() {
   }
 
   const close = (returnFocus: boolean) => {
-    clearTimeout(resume)
+    holding = false
     cancelAnimationFrame(frame)
     frame = 0
     const wasOpen = opened
@@ -154,7 +157,7 @@ async function setupStage() {
     video.mode = 'preview'
     video.controls = false
     video.active = false
-    stage.classList.remove('is-active', 'is-open', 'is-scrubbing')
+    stage.classList.remove('is-active', 'is-open', 'is-holding', 'is-scrubbing')
     fill.style.transform = 'scaleX(0)'
     if (!wasOpen) return
     stage.setAttribute('role', 'button')
@@ -168,37 +171,80 @@ async function setupStage() {
     }
   }
 
-  // Mouse and pen: hover plays, sideways movement scrubs, rest resumes. Touch has no hover, so it skips all of this.
+  const scrubTo = (clientX: number) => {
+    const rect = stage.getBoundingClientRect()
+    const progress = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)))
+    stage.classList.add('is-scrubbing')
+    fill.style.transform = `scaleX(${progress})`
+    video.scrub(progress)
+  }
+
+  const endHold = (event: PointerEvent) => {
+    if (!holding || event.pointerId !== pointerId) return
+    holding = false
+    pointerId = -1
+    stage.classList.remove('is-holding')
+    window.removeEventListener('pointermove', onHoldMove)
+    window.removeEventListener('pointerup', endHold)
+    window.removeEventListener('pointercancel', endHold)
+    if (dragged) {
+      suppressClick = true
+      stage.classList.remove('is-scrubbing')
+      if (!opened && stage.matches(':hover')) video.resume()
+    } else if (event.type === 'pointerup' && !opened) {
+      // pointerdown calls preventDefault so the gesture is not stolen. Some browsers then drop the click.
+      suppressClick = true
+      open()
+    }
+    if (!opened && !stage.matches(':hover')) close(false)
+  }
+
+  // Mouse and pen: hover plays straight through. Scrub only while the button is held and dragged.
+  // Touch has no hover, so it skips this and a tap opens the player.
   stage.addEventListener('pointerenter', (event) => {
     if (event.pointerType === 'touch') return
-    lastX = event.clientX
     preview(true)
   })
-  stage.addEventListener('pointermove', (event) => {
-    if (opened || stills || event.pointerType === 'touch' || Math.abs(event.clientX - lastX) < 2) return
-    lastX = event.clientX
-    if (!frame) frame = requestAnimationFrame(() => {
+  stage.addEventListener('pointerdown', (event) => {
+    if (opened || stills || event.pointerType === 'touch' || event.button !== 0) return
+    holding = true
+    dragged = false
+    pointerId = event.pointerId
+    downX = event.clientX
+    // Keep the drag from becoming a scroll. Otherwise the browser cancels the pointer and the preview rewinds.
+    event.preventDefault()
+    stage.classList.add('is-holding')
+    // Listen on window. setPointerCapture cancels the gesture in some browsers, which was rewinding the preview.
+    window.addEventListener('pointermove', onHoldMove)
+    window.addEventListener('pointerup', endHold)
+    window.addEventListener('pointercancel', endHold)
+  })
+  const onHoldMove = (event: PointerEvent) => {
+    if (!holding || event.pointerId !== pointerId || opened || stills) return
+    if (!dragged && Math.abs(event.clientX - downX) < 4) return
+    dragged = true
+    if (frame) return
+    const x = event.clientX
+    frame = requestAnimationFrame(() => {
       frame = 0
-      if (opened) return
-      const rect = stage.getBoundingClientRect()
-      const progress = Math.max(0, Math.min(1, (lastX - rect.left) / rect.width))
-      stage.classList.add('is-scrubbing')
-      fill.style.transform = `scaleX(${progress})`
-      video.scrub(progress)
+      if (holding) scrubTo(x)
     })
-    clearTimeout(resume)
-    resume = window.setTimeout(() => {
-      if (opened) return
-      stage.classList.remove('is-scrubbing')
-      video.resume()
-    }, 350)
-  }, { passive: true })
+  }
   stage.addEventListener('pointerleave', (event) => {
     // on touch, pointerleave fires after every lift, which would close the player under the finger
-    if (event.pointerType !== 'touch') close(false)
+    // a held drag is tracked on window, so leaving the stage must not stop the scrub
+    if (event.pointerType !== 'touch' && !holding) close(false)
   })
 
-  stage.addEventListener('click', open)
+  stage.addEventListener('click', (event) => {
+    if (suppressClick) {
+      suppressClick = false
+      event.preventDefault()
+      event.stopPropagation()
+      return
+    }
+    open()
+  })
   stage.addEventListener('keydown', (event) => {
     if (event.target === stage && !opened && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()

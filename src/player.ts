@@ -110,6 +110,7 @@ export class Player extends EventTarget {
     } else if (this.tail === 3) {
       try { ms.endOfStream() } catch { /* already ended */ }
     }
+    this.ensurePlaying()
   }
 
   private fetchTail() {
@@ -161,7 +162,7 @@ export class Player extends EventTarget {
     }
     this.playing = true
     this.showWhenReady()
-    this.current.play().catch(() => {})
+    this.ensurePlaying()
   }
 
   pause(rewind = false) {
@@ -201,17 +202,31 @@ export class Player extends EventTarget {
     if (options.title !== undefined) v.title = options.title
   }
 
+  /** A play() issued before the first fragment is appended is rejected. Retry once the frame exists. */
+  private ensurePlaying() {
+    const v = this.current
+    if (!this.playing || this.dead || v.readyState < 2) return
+    v.classList.add('on')
+    if (v.paused) v.play().catch(() => {})
+  }
+
   private showWhenReady() {
     const v = this.current
-    if (v.readyState >= 2) v.classList.add('on')
-    else if (!this.onData) {
-      this.onData = () => {
-        this.onData = undefined
-        if (v === this.current) v.classList.add('on')
-        this.applySeek()
-      }
-      v.addEventListener('loadeddata', this.onData, { once: true })
+    if (v.readyState >= 2) {
+      v.classList.add('on')
+      this.ensurePlaying()
+      return
     }
+    if (this.onData) return
+    this.onData = () => {
+      this.onData = undefined
+      if (v !== this.current) return
+      v.classList.add('on')
+      this.applySeek()
+      this.ensurePlaying()
+    }
+    v.addEventListener('loadeddata', this.onData, { once: true })
+    v.addEventListener('canplay', () => this.ensurePlaying(), { once: true })
   }
 
   private applySeek() {

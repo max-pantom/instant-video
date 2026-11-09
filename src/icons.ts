@@ -1,7 +1,9 @@
 // Primitive8 outline icons, 20px grid, 1.5 stroke — copied verbatim from icon-factory/packages/icons/svg/outline/20/<slug>.svg.
 const paths = {
-  // play.svg
+  // play.svg — outline for chrome that sits on a light mark
   play: '<path d="M7.25 6.076A1 1 0 0 1 8.788 5.233L14.931 9.157A1 1 0 0 1 14.931 10.843L8.788 14.767A1 1 0 0 1 7.25 13.924Z" fill="none" stroke="currentColor" />',
+  // same geometry, filled, so the control reads on video
+  playSolid: '<path d="M7.25 6.076A1 1 0 0 1 8.788 5.233L14.931 9.157A1 1 0 0 1 14.931 10.843L8.788 14.767A1 1 0 0 1 7.25 13.924Z" fill="currentColor" stroke="none" />',
   // pause.svg
   pause: '<line x1="7.25" y1="4.75" x2="7.25" y2="15.25" fill="none" stroke="currentColor" /><line x1="12.75" y1="4.75" x2="12.75" y2="15.25" fill="none" stroke="currentColor" />',
   // volume.svg
