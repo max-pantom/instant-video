@@ -14,10 +14,6 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     position: relative;
   }
   .nav {
@@ -45,19 +41,40 @@
     line-height: 24px;
     white-space: nowrap;
   }
-  .copy { background: #2c2c2c; color: #d9d9d9; box-shadow: 0 0 0 0.5px #4a4a4a, 0 1px 2px rgba(0,0,0,.5); }
+  .copy { background: #262626; color: #d9d9d9; box-shadow: 0 0 0 0.5px #4a4a4a, 0 1px 2px rgba(0,0,0,.5); }
   .copy code { font: 400 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.01em; }
   .star { background: #fff; color: #000; box-shadow: 0 0 0 0.5px #fff, 0 1px 2px rgba(0,0,0,.5); }
-  h1 { margin: 0; font-size: 42px; font-weight: 500; line-height: 52px; letter-spacing: -.02em; }
-  p { margin: 16px 0 0; width: 520px; text-align: center; font-size: 20px; line-height: 24px; font-weight: 400; color: #fff; opacity: .6; }
+  .hero {
+    position: absolute;
+    left: 48px;
+    right: 48px;
+    top: 112px;
+    bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { margin: 0; font-size: 48px; font-weight: 500; line-height: 56px; letter-spacing: -.02em; text-align: center; }
+  p { margin: 12px 0 0; font-size: 20px; line-height: 28px; font-weight: 400; color: #999; text-align: center; }
+  .stage {
+    margin-top: 24px;
+    width: 620px;
+    aspect-ratio: 16 / 9;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #1a1a1a;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .06);
+    position: relative;
+  }
+  .stage img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.18); }
+  .bar i { display: block; width: 38%; height: 100%; background: #fff; }
 </style>
 </head>
 <body>
   <div class="nav">
     <div class="brand">
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="8" fill="#010101"/>
-        <rect width="32" height="32" rx="8" fill="none" stroke="#2c2c2c" stroke-width="1"/>
         <g transform="translate(6 6)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7.25 6.076A1 1 0 0 1 8.788 5.233L14.931 9.157A1 1 0 0 1 14.931 10.843L8.788 14.767A1 1 0 0 1 7.25 13.924Z"/>
         </g>
@@ -72,10 +89,21 @@
         </svg>
         <code>npm i github:max-pantom/instant-video</code>
       </div>
-      <div class="pill star">Star on GitHub</div>
+      <div class="pill star">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9.548 3.454A0.5 0.5 0 0 1 10.452 3.454L12.135 7.007A0.5 0.5 0 0 0 12.516 7.288L16.466 7.852A0.5 0.5 0 0 1 16.736 8.713L13.952 11.312A0.5 0.5 0 0 0 13.802 11.771L14.556 15.731A0.5 0.5 0 0 1 13.832 16.267L10.233 14.373A0.5 0.5 0 0 0 9.767 14.373L6.168 16.267A0.5 0.5 0 0 1 5.444 15.731L6.198 11.771A0.5 0.5 0 0 0 6.048 11.312L3.264 8.713A0.5 0.5 0 0 1 3.534 7.852L7.484 7.288A0.5 0.5 0 0 0 7.865 7.007Z"/>
+        </svg>
+        Star on GitHub
+      </div>
     </div>
   </div>
-  <h1>Introducing instant-video</h1>
-  <p>An open-source hover player for the web, with the first frame decoded before the pointer arrives, scrubbing as you move across the thumbnail, and a click that continues into the full video.</p>
+  <div class="hero">
+    <h1>Introducing instant-video</h1>
+    <p>An open-source hover player for the web.</p>
+    <div class="stage">
+      <img src="../demo/assets/gardener/p-fe9ed4decd82.jpg" alt="">
+      <div class="bar"><i></i></div>
+    </div>
+  </div>
 </body>
 </html>
